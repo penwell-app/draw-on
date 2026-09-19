@@ -1,6 +1,6 @@
 {
     "name": "@penwell/draw-on",
-    "version": "0.1.0",
+    "version": "0.1.4",
     "description": "Animate any inline SVGs so its strokes draw themselves, then fade the fills and labels in. Scrubbable, and recordable to WebM in the browser.",
     "keywords": [
         "svg",
@@ -50,7 +50,11 @@
     "files": [
         "dist",
         "README.md",
-        "LICENSE"
+        "LICENSE",
+        "demo-annotate.gif",
+        "demo-diagram.gif",
+        "demo-notebook.gif",
+        "draw-on.svg"
     ],
     "scripts": {
         "build": "tsup",

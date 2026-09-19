@@ -1,12 +1,12 @@
 <div align="center">
-  <img src="./draw-on.svg" alt="draw-on" width="300" />
+  <img src="https://raw.githubusercontent.com/penwell-app/draw-on/master/draw-on.svg" alt="draw-on" width="200" />
   <h1>@penwell/draw-on</h1>
   <p><strong>Make any inline SVG draw itself.</strong></p>
   <p>Strokes animate one by one, then fills and labels fade in. Scrub to any point, or record the whole animation to a WebM clip - entirely in the browser, without a server.</p>
   
   [![npm version](https://img.shields.io/npm/v/@penwell/draw-on)](https://www.npmjs.com/package/@penwell/draw-on)
   [![npm downloads](https://img.shields.io/npm/dm/@penwell/draw-on)](https://www.npmjs.com/package/@penwell/draw-on)
-  [![License](https://img.shields.io/npm/l/@penwell/draw-on)](https://github.com/penwell-app/draw-on/blob/main/LICENSE)
+  [![License](https://img.shields.io/npm/l/@penwell/draw-on)](https://github.com/penwell-app/draw-on/blob/master/LICENSE)
 </div>
 
 ---
@@ -20,19 +20,23 @@ Originally created for [Penwell](https://usepenwell.com/) to animate Mermaid dia
 <div align="center">
   
 ### Annotate Documents
-![Annotate Demo](./demo-annotate.gif)
+![Annotate Demo](https://raw.githubusercontent.com/penwell-app/draw-on/master/demo-annotate.gif)
 
 ### Draw Diagrams
-![Diagram Demo](./demo-diagram.gif)
+![Diagram Demo](https://raw.githubusercontent.com/penwell-app/draw-on/master/demo-diagram.gif)
 
 ### Notebook Animation
-![Notebook Demo](./demo-notebook.gif)
+![Notebook Demo](https://raw.githubusercontent.com/penwell-app/draw-on/master/demo-notebook.gif)
 
 ### Full Video Demos
 
-- [Penwell Draw On Demo](./penwell-drawon-demo.mp4)
-- [Practical MP4 Demo](./drawon_demo_vid.mp4)
-- [WebM Demo](./draw-on-demo.webm)
+- [Penwell Draw On Demo](https://github.com/penwell-app/draw-on/raw/master/penwell-drawon-demo.mp4)
+- [Practical MP4 Demo](https://github.com/penwell-app/draw-on/raw/master/drawon_demo_vid.mp4)
+- [WebM Demo](https://github.com/penwell-app/draw-on/raw/master/draw-on-demo.webm)
+
+### Demo Folder in Github
+
+- [Demo Folder in Github](https://github.com/penwell-app/draw-on/tree/master/demos)
 
 </div>
 
