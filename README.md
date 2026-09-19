@@ -316,7 +316,7 @@ npm run build
 
 ### Pull requests
 
-1. Fork the repository or create a branch from `main`.
+1. Fork the repository or create a branch from `master`.
 2. Make your changes.
 3. Run the type checker and build.
 4. Update documentation when necessary.
