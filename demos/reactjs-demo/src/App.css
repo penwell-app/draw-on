@@ -1,0 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap');
+
+body {
+  font-family: urbanist, system-ui, sans-serif;
+  background: #faf8f3;
+  color: #27241a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+}
+
+#root {
+  max-width: 800px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#root > div {
+  width: 100%;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(39, 36, 26, 0.08);
+}
+
+#root svg {
+  max-width: 100%;
+  width: 800px !important;
+  height: auto !important;
+  min-height: 500px;
+}
+
+button {
+  font: inherit;
+  padding: 8px 20px;
+  border: 1px solid #27241a;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #efe0c2;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  #root {
+    max-width: 100%;
+    padding: 0 12px;
+  }
+
+  #root > div:not(.logo-link) {
+    min-height: 400px;
+    padding: 24px;
+  }
+
+  #root svg {
+    width: 100% !important;
+    min-height: 300px;
+  }
+}

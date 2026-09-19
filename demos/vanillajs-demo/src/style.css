@@ -1,0 +1,77 @@
+   @import url('https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap');
+
+   body {
+     font-family: urbanist,system-ui, sans-serif;
+     background: #faf8f3;
+     color: #27241a;
+     margin: auto;
+     height: auto;
+     text-align: center;
+     height: 100%;
+     gap: 16px;
+   }
+
+   #stage {
+     width: 100%;
+     max-width: 600px;
+     min-height: 400px;
+     margin: 12px auto;
+     background: #fff;
+     border-radius: 12px;
+     box-shadow: 0 4px 20px rgba(39, 36, 26, 0.08);
+     display: flex;
+     align-items: center;
+     justify-content: center;
+   }
+
+   #stage svg {
+     width: 100% !important;
+     max-width: 800px !important;
+     height: auto !important;
+     min-height: 500px;
+   }
+
+   button {
+     font: inherit;
+     padding: 8px 20px;
+     border: 1px solid #27241a;
+     background: #fff;
+     border-radius: 6px;
+     cursor: pointer;
+   }
+
+   button:hover {
+     background: #efe0c2;
+   }
+
+   @media (max-width: 768px) {
+     #stage {
+       max-width: 100%;
+       min-height: 400px;
+       padding: 24px;
+       margin: 16px auto;
+     }
+
+     #stage svg {
+       min-height: 300px;
+     }
+   }
+
+/* Logo styling */
+.logo-link {
+  display: block;
+  text-align: center;
+  margin: 2rem auto 1rem;
+  transition: transform 0.3s ease;
+}
+
+.logo-link:hover {
+  transform: scale(1.05);
+}
+
+.main-logo {
+  width: 80px;
+  height: 80px;
+  display: block;
+  margin: 0 auto;
+}

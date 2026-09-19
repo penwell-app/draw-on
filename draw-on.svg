@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" width="1200" height="750" role="img" aria-label="Draw-On: an SVG animation library published on npm">
+  <rect width="1200" height="750" fill="#fbfaf7" />
+
+  <!-- hairline frame, echoing the site's rules -->
+  <g stroke="#e8e4db" stroke-width="1">
+    <line x1="90" y1="128" x2="1110" y2="128" />
+    <line x1="90" y1="620" x2="1110" y2="620" />
+  </g>
+
+  <!-- masthead -->
+  <text x="90" y="90" font-family="ui-monospace, Consolas, Menlo, monospace" font-size="22" letter-spacing="2" fill="#8d897d">NPM</text>
+  <text x="156" y="90" font-family="ui-monospace, Consolas, Menlo, monospace" font-size="22" letter-spacing="1" fill="#16150f">@penwell/draw-on</text>
+  <rect x="1020" y="64" width="90" height="34" rx="17" fill="#e7efe8" />
+  <text x="1065" y="87" text-anchor="middle" font-family="ui-monospace, Consolas, Menlo, monospace" font-size="19" fill="#3d5f45">v0.1.0</text>
+
+  <!-- wordmark -->
+  <text x="86" y="330" font-family="Georgia, 'Times New Roman', serif" font-size="158" letter-spacing="-6" fill="#16150f">Draw-On</text>
+
+  <text x="92" y="404" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-style="italic" fill="#2f6a5c">strokes draw themselves</text>
+  <text x="92" y="452" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#6d6a60">then the fills and the labels fade in behind them</text>
+
+  <!-- the drawing itself: a stroke mid-draw, its nib, and a scrub track -->
+  <path d="M92 546 C 210 512, 268 470, 356 494 S 512 566, 620 522" fill="none" stroke="#27241a" stroke-width="4" stroke-linecap="round" />
+  <path d="M620 522 C 700 488, 748 452, 828 470 S 950 528, 1040 486" fill="none" stroke="#2f6a5c" stroke-width="4" stroke-linecap="round" stroke-dasharray="14 16" />
+
+  <g transform="translate(1040 486) rotate(38)">
+    <path d="M0 0 L34 -13 L22 12 Z" fill="#27241a" />
+  </g>
+
+  <g stroke="#dbd6ca" stroke-width="2">
+    <line x1="92" y1="580" x2="92" y2="596" />
+    <line x1="286" y1="580" x2="286" y2="596" />
+    <line x1="480" y1="580" x2="480" y2="596" />
+    <line x1="674" y1="580" x2="674" y2="596" />
+    <line x1="868" y1="580" x2="868" y2="596" />
+    <line x1="1062" y1="580" x2="1062" y2="596" />
+  </g>
+  <line x1="92" y1="588" x2="1062" y2="588" stroke="#e8e4db" stroke-width="2" />
+  <circle cx="674" cy="588" r="11" fill="#2f6a5c" />
+  <text x="674" y="566" text-anchor="middle" font-family="ui-monospace, Consolas, Menlo, monospace" font-size="18" fill="#16150f">0.60</text>
+
+  <!-- footer -->
+  <text x="90" y="676" font-family="ui-monospace, Consolas, Menlo, monospace" font-size="21" letter-spacing="1" fill="#8d897d">ESM + CJS &#183; TYPESCRIPT &#183; MIT</text>
+  <text x="1110" y="676" text-anchor="end" font-family="ui-monospace, Consolas, Menlo, monospace" font-size="21" letter-spacing="1" fill="#8d897d">github.com/penwell-app/draw-on</text>
+</svg>

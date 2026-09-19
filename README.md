@@ -1,16 +1,42 @@
-# @penwell/draw-on
+<div align="center">
+  <img src="./draw-on.svg" alt="draw-on" width="300" />
+  <h1>@penwell/draw-on</h1>
+  <p><strong>Make any inline SVG draw itself.</strong></p>
+  <p>Strokes animate one by one, then fills and labels fade in. Scrub to any point, or record the whole animation to a WebM clip - entirely in the browser, without a server.</p>
+  
+  [![npm version](https://img.shields.io/npm/v/@penwell/draw-on)](https://www.npmjs.com/package/@penwell/draw-on)
+  [![npm downloads](https://img.shields.io/npm/dm/@penwell/draw-on)](https://www.npmjs.com/package/@penwell/draw-on)
+  [![License](https://img.shields.io/npm/l/@penwell/draw-on)](https://github.com/penwell-app/draw-on/blob/main/LICENSE)
+</div>
 
-Make any inline SVG draw itself.
-
-Strokes animate one by one, then fills and labels fade in. Scrub to any point, or record the whole animation to a WebM clip - entirely in the browser, without a server.
-
-[![npm version](https://img.shields.io/npm/v/@penwell/draw-on)](https://www.npmjs.com/package/@penwell/draw-on)
-[![npm downloads](https://img.shields.io/npm/dm/@penwell/draw-on)](https://www.npmjs.com/package/@penwell/draw-on)
-[![License](https://img.shields.io/npm/l/@penwell/draw-on)](https://github.com/penwell/draw-on/blob/main/LICENSE)
+---
 
 Built on [Vivus](https://github.com/maxwellito/vivus), extended for real-world SVGs containing strokes, fills, and text.
 
 Originally created for [Penwell](https://usepenwell.com/) to animate Mermaid diagrams and handwritten notebook pages, `@penwell/draw-on` is now available as a standalone open-source library.
+
+## 📺 Demo Videos
+
+<div align="center">
+  
+### Annotate Documents
+![Annotate Demo](./demo-annotate.gif)
+
+### Draw Diagrams
+![Diagram Demo](./demo-diagram.gif)
+
+### Notebook Animation
+![Notebook Demo](./demo-notebook.gif)
+
+### Full Video Demos
+
+- [Penwell Draw On Demo](./penwell-drawon-demo.mp4)
+- [Practical MP4 Demo](./drawon_demo_vid.mp4)
+- [WebM Demo](./draw-on-demo.webm)
+
+</div>
+
+---
 
 ## Features
 
