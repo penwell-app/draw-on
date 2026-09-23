@@ -1,0 +1,116 @@
+The React hook: give it SVG markup, render the container ref, and it handles
+parsing, mounting, drawing and teardown.
+
+<ApiSignature
+    signature={'useSketchDraw(options: UseSketchDrawOptions): SketchDrawApi'}
+    entry="@penwell/draw-on"
+    returns="SketchDrawApi"
+    note="React 17+ peer dependency"
+/>
+
+## Options
+
+`UseSketchDrawOptions` extends [`DrawingOptions`](/docs/api/drawing-options) with
+four React-specific fields.
+
+| Option | Type | Default | What it does |
+| --- | --- | --- | --- |
+| `svgMarkup` | `string` | — | Serialized `<svg>…</svg>` markup to animate. Required. |
+| `autoPlay` | `boolean` | `true` | Draw as soon as the SVG is mounted. |
+| `maxWidth` | `number` | `1280` | Caps the width in the reported `dimensions` and in recorded video. |
+| `onDone` | `() => void` | — | Called when the draw-on finishes. |
+| `onError` | `(error: Error) => void` | — | Called when parsing or drawing fails. |
+| *plus* | | | Every [`DrawingOptions`](/docs/api/drawing-options) field: `duration`, `type`, `stroke`, `strokeWidth`, `revealStart`, `revealMs` |
+
+```tsx
+const { containerRef, play } = useSketchDraw({
+    svgMarkup,
+    duration: 260,
+    type: 'delayed',
+    revealStart: 0.5,
+    autoPlay: true,
+    maxWidth: 1280,
+    onDone: () => console.log('drawn'),
+    onError: (error) => console.error(error.message),
+});
+```
+
+## Returned API
+
+| Member | Type | What it does |
+| --- | --- | --- |
+| `containerRef` | `RefObject<HTMLDivElement>` | Attach to the host element. The SVG is rendered inside it. |
+| `status` | `'idle' \| 'drawing' \| 'done' \| 'error'` | Current phase of the animation. |
+| `error` | `string` | Human-readable message when `status` is `'error'`, otherwise `''`. |
+| `dimensions` | `{ width: number; height: number }` | Intrinsic size of the parsed SVG, capped by `maxWidth`. |
+| `play` | `() => void` | Stops, resets and draws again. |
+| `setProgress` | `(fraction: number) => void` | Scrub the mounted drawing from 0 to 1. |
+| `canRecord` | `boolean` | `canRecordVideo()` evaluated at render time. Gate export UI on it. |
+| `exportWebM` | `(opts?: Partial<RecordOptions>) => Promise<Blob>` | Records the draw-on and re-reveals the artwork. |
+| `drawing` | `Drawing \| null` | The underlying handle — `null` until the SVG is mounted. |
+
+```tsx
+const { containerRef, status, error, play, setProgress, canRecord, exportWebM, drawing } =
+    useSketchDraw({ svgMarkup });
+
+async function handleExport() {
+    if (!canRecord) return;
+    const blob = await exportWebM({ durationMs: 3000 });
+    downloadBlob(blob, 'diagram.webm');
+}
+```
+
+<LiveDemo
+    title="Status, scrubbing and export"
+    description="The full returned API in use — including the export button, gated on canRecord."
+    sourceId="react-hook"
+    controls="full"
+    autoPlayWhenInView
+/>
+
+## Lifecycle, precisely
+
+- **Mount** — the effect clears the container, parses `svgMarkup`, appends the
+  SVG, measures it, creates the drawing and either plays it (`autoPlay`, the
+  default) or blanks the fills and labels with `hide()`.
+- **Rebuild** — the effect re-runs when `svgMarkup` changes. The previous drawing
+  is destroyed first, so the container never holds two SVGs.
+- **Options and callbacks** — `drawOptions`, `autoPlay`, `maxWidth`, `onDone` and
+  `onError` are read through refs. Changing them does not rebuild, and the values
+  used are the current ones at the moment they matter.
+- **Unmount** — `drawing.destroy()` runs in cleanup, releasing Vivus' handle.
+- **Strict Mode** — in development React mounts, unmounts and mounts again; you
+  may see a quick restart. Production builds run the effect once.
+
+<Callout type="warning" title="Option changes do not rebuild">
+A common surprise: passing a new `duration` on a later render does nothing,
+because the drawing was built with the old value. Change `svgMarkup` (for example
+by keying the markup string with your options), or use the
+[core API](/docs/api/create-drawing) and rebuild deliberately.
+</Callout>
+
+## Error handling
+
+`status === 'error'` with a message in `error` happens when the markup has no
+usable SVG root (`InvalidSvgError`) or the environment has no DOM. Render a
+fallback instead of an empty box:
+
+```tsx
+{status === 'error' ? <p>Could not draw this diagram: {error}</p> : <div ref={containerRef} />}
+```
+
+Note that the hook still renders the container element in the error case — the
+container is empty, which is why the pattern above swaps it out.
+
+## Server rendering
+
+There is no `document` on the server. Keep the component client-side
+(`'use client'`, `ssr: false`, or an effect-guarded import) so the hook only ever
+runs where the DOM exists. Details in
+[Using with React](/docs/guides/react).
+
+## Next steps
+
+- [SketchDraw](/docs/api/sketch-draw) — the component built on this hook.
+- [Using with React](/docs/guides/react) — scroll triggers, reduced motion and SSR.
+- [Type reference](/docs/api/types) — `SketchDrawApi` and friends.

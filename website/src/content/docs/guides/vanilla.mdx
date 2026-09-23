@@ -1,0 +1,179 @@
+Everything here uses `@penwell/draw-on/core` — no framework, no React.
+
+---
+
+## Two starting points
+
+**From a string** — markup you fetched, generated or hold in a template:
+
+```ts
+import { createDrawing, parseSvg } from '@penwell/draw-on/core';
+
+const svg = parseSvg(markup);       // imported into the current document
+host.appendChild(svg);              // must be in the DOM: the engine measures it
+const drawing = createDrawing(svg, { duration: 240 });
+drawing.play();
+```
+
+**From markup already on the page** — server-rendered or inlined by your bundler:
+
+```ts
+import { createDrawing } from '@penwell/draw-on/core';
+
+const svg = document.querySelector<SVGSVGElement>('#hero-diagram')!;
+const drawing = createDrawing(svg, { duration: 240 });
+drawing.play();
+```
+
+Nothing needs to be parsed in the second case, and there is no flash of unstyled
+content — the artwork is in the HTML, and the engine blanks the fills and labels
+only when it starts.
+
+<Callout type="note" title="The element must be in the document">
+Vivus measures every shape with `getTotalLength()`, which returns `0` for a
+detached element. Append the SVG (or use one that is already mounted) before
+calling `createDrawing`.
+</Callout>
+
+## A complete, copy-pasteable setup
+
+```html
+<div id="stage"></div>
+
+<div class="controls">
+    <button id="replay" type="button">Replay</button>
+    <button id="reset" type="button">Reset</button>
+    <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+    <span id="percent">0%</span>
+</div>
+```
+
+```ts
+import { createDrawing, parseSvg } from '@penwell/draw-on/core';
+
+const host = document.querySelector<HTMLDivElement>('#stage')!;
+const svg = parseSvg(SVG_MARKUP);
+host.appendChild(svg);
+
+const drawing = createDrawing(svg, { duration: 240, revealStart: 0.55 });
+
+const scrub = document.querySelector<HTMLInputElement>('#scrub')!;
+const percent = document.querySelector<HTMLSpanElement>('#percent')!;
+
+drawing.setProgress(0);
+drawing.play(() => {
+    scrub.value = '1';
+    percent.textContent = '100%';
+});
+
+scrub.addEventListener('input', () => {
+    const value = Number(scrub.value);
+    drawing.setProgress(value);
+    percent.textContent = `${Math.round(value * 100)}%`;
+});
+
+document.querySelector<HTMLButtonElement>('#replay')!.addEventListener('click', () => {
+    drawing.stop();
+    drawing.reset();
+    drawing.play();
+});
+```
+
+<LiveDemo
+    title="The core API with your own controls"
+    description="parseSvg, createDrawing, play and setProgress — nothing else is needed."
+    sourceId="core-api"
+    controls="none"
+    autoPlayWhenInView
+/>
+
+## Tearing down
+
+`destroy()` removes Vivus' internal animation handle. Call it when a host element
+goes away (a route change, a modal closing, a re-render that replaces the SVG),
+otherwise the old drawing keeps ticking in the background.
+
+```ts
+const drawing = createDrawing(svg, { duration: 240 });
+
+function unmount() {
+    drawing.stop();
+    drawing.destroy();
+    svg.remove();
+}
+```
+
+A safe pattern for re-rendering: keep the handle in a variable, destroy it before
+creating the next one.
+
+```ts
+let current: ReturnType<typeof createDrawing> | null = null;
+
+function render(markup: string) {
+    current?.destroy();
+
+    host.replaceChildren();
+    const svg = parseSvg(markup);
+    host.appendChild(svg);
+
+    current = createDrawing(svg, { duration: 240 });
+    current.play();
+}
+```
+
+## Several drawings on one page
+
+Each `createDrawing` call is independent — separate elements, separate Vivus
+instances, separate progress. Stagger them for a nice cascade:
+
+```ts
+const drawings = [...document.querySelectorAll('svg.diagram')].map((svg, index) =>
+    createDrawing(svg as SVGSVGElement, { duration: 200 + index * 40 }),
+);
+
+drawings.forEach((drawing, index) => {
+    setTimeout(() => drawing.play(), index * 180);
+});
+```
+
+<Callout type="warning" title="Sharing one SVG element is not supported">
+Vivus rewrites shapes into paths, so two drawings cannot animate the same
+element. Clone the markup instead: one `parseSvg(markup)` call per drawing.
+</Callout>
+
+## Replaying after the first run
+
+`play()` always hides the fills and labels first, so calling it again is
+sufficient — `reset()` is only needed when you stopped mid-draw:
+
+```ts
+drawing.play();          // draw again from the beginning
+drawing.stop();          // pause where it is
+drawing.reset();         // rewind the strokes to the blank state
+```
+
+## Using it inside other stacks
+
+The core entry is a plain ES module. Two patterns cover most cases:
+
+- **A component in your framework** — mount the SVG in a ref inside your
+  framework's mount hook, and `destroy()` in its unmount hook. Vue and Svelte
+  examples are in [Installation](/docs/installation).
+- **A template-rendered page** — put the SVG inline in the HTML and animate the
+  existing element with a small script. No parsing, no client-side rendering.
+
+## Performance notes
+
+Drawing is cheap: each frame writes a dash offset and, near the end, an opacity.
+There is no layout thrash and no per-frame DOM creation. Two things do cost:
+
+- **Parsing** — `parseSvg` runs `DOMParser` and `importNode` once per animation.
+  Cache the result, or animate an element that is already mounted.
+- **Recording** — a full canvas rasterisation per frame, the expensive path. See
+  [Recording to WebM](/docs/guides/recording).
+
+## Next steps
+
+- [Scrubbing and scroll](/docs/guides/scrubbing) — turn progress into an interaction.
+- [Recording to WebM](/docs/guides/recording) — the same handle, captured to video.
+- [createDrawing](/docs/api/create-drawing) — every method on the returned handle.

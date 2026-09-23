@@ -1,0 +1,88 @@
+`computeDims` reports the intrinsic pixel size of an SVG, preserving its aspect
+ratio and capping the width. It exists to size recorded video without stretching
+the artwork.
+
+<ApiSignature
+    signature={'computeDims(svg: SVGSVGElement, maxWidth?: number): Dimensions'}
+    entry="@penwell/draw-on/core"
+    returns="Dimensions"
+    note="maxWidth defaults to 1280"
+/>
+
+```ts
+interface Dimensions {
+    width: number;
+    height: number;
+}
+```
+
+## Example
+
+```ts
+import { computeDims, createDrawing, parseSvg } from '@penwell/draw-on/core';
+
+const svg = parseSvg(markup);
+document.querySelector('#stage')!.appendChild(svg);
+
+const drawing = createDrawing(svg);
+
+const { width, height } = computeDims(drawing.el);
+console.log(width, height);            // e.g. 900 520
+
+const large = computeDims(drawing.el, 1920);   // same ratio, wider cap
+```
+
+## How the size is chosen
+
+1. The SVG `viewBox` — `viewBox.baseVal.width` and `.height`.
+2. Otherwise the rendered size: `clientWidth` and `clientHeight`.
+3. Otherwise the fallback `960 × 600`.
+
+Then, if the width exceeds `maxWidth`, both values are scaled by
+`maxWidth / width` and the width is clamped, so the aspect ratio never changes.
+
+| Source | `viewBox` | `maxWidth` | Result |
+| --- | --- | --- | --- |
+| `viewBox="0 0 900 520"` | 900 × 520 | default 1280 | `900 × 520` |
+| `viewBox="0 0 900 520"` | 900 × 520 | 1920 | `900 × 520` |
+| `viewBox="0 0 1920 1080"` | 1920 × 1080 | default 1280 | `1280 × 720` |
+| No `viewBox`, rendered | 800 × 400 | default 1280 | `800 × 400` |
+| Detached element | none | default 1280 | `960 × 600` |
+
+<Callout type="tip" title="Give the SVG a viewBox">
+A `viewBox` is the reliable input. Without it, a detached or not-yet-laid-out SVG
+falls back to `960 × 600`, which can squash a wide diagram in a recorded clip.
+</Callout>
+
+## Where it is used
+
+- **[`recordDrawToWebM`](/docs/api/record)** — `width` and `height` set the canvas
+  and therefore the video resolution.
+- **[`useSketchDraw`](/docs/api/use-sketch-draw)** — the hook calls it internally
+  to populate `dimensions` (capped by the `maxWidth` option, default 1280).
+- **Manual canvas work** — anything that needs the SVG's natural size.
+
+```tsx
+const { exportWebM } = useSketchDraw({ svgMarkup, maxWidth: 1920 });
+
+// the hook passes maxWidth through to computeDims for you
+const blob = await exportWebM({ fps: 30, durationMs: 5000 });
+```
+
+## Choosing a max width
+
+| Goal | `maxWidth` |
+| --- | --- |
+| Smallest file, quick capture | `960` |
+| Default, good for most diagrams | `1280` |
+| Sharper text in a clip | `1920` |
+| Full resolution of a large source | Match the `viewBox` width |
+
+Higher resolution costs more per frame — capture time scales with pixels, not with
+frame count alone.
+
+## Next steps
+
+- [Recording API](/docs/api/record) — where these numbers end up.
+- [Recording to WebM](/docs/guides/recording) — picking fps and duration.
+- [Type reference](/docs/api/types) — the `Dimensions` shape.

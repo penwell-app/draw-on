@@ -1,0 +1,165 @@
+Three functions and one options object: check support, record the draw-on to a
+WebM blob, and hand it to the browser as a download.
+
+## canRecordVideo
+
+<ApiSignature
+    signature={'canRecordVideo(): boolean'}
+    entry="@penwell/draw-on/core"
+    returns="boolean"
+    note="capability probe"
+/>
+
+```ts
+import { canRecordVideo } from '@penwell/draw-on/core';
+
+if (canRecordVideo()) {
+    // render the export button
+}
+```
+
+It returns `true` when `MediaRecorder` is defined **and**
+`HTMLCanvasElement.prototype.captureStream` is a function. Both are required:
+`MediaRecorder` alone cannot capture a canvas.
+
+## recordDrawToWebM
+
+<ApiSignature
+    signature={'recordDrawToWebM(svg: SVGSVGElement, setProgress: (fraction: number) => void, opts: RecordOptions): Promise<Blob>'}
+    entry="@penwell/draw-on/core"
+    returns="Promise<Blob>"
+    note="throws if unsupported"
+/>
+
+```ts
+import { computeDims, recordDrawToWebM } from '@penwell/draw-on/core';
+
+const { width, height } = computeDims(drawing.el);
+
+const blob = await recordDrawToWebM(drawing.el, drawing.setProgress, {
+    width,
+    height,
+    fps: 30,
+    durationMs: 4000,
+    holdMs: 900,
+    background: '#faf8f3',
+    onProgress: (fraction) => setProgressBar(fraction),
+});
+```
+
+The second argument is deliberately `drawing.setProgress` — recording is a loop
+around the same method you use for scrubbing, so a clip matches what a reader
+sees. If you pass a function that ignores the fraction, you get a still image.
+
+## RecordOptions
+
+| Option | Type | Default | What it does |
+| --- | --- | --- | --- |
+| `width` | `number` | — | Canvas width in pixels. Pass `computeDims(...).width`. |
+| `height` | `number` | — | Canvas height in pixels. |
+| `fps` | `number` | `30` | Frames captured per second. |
+| `durationMs` | `number` | `4000` | Length of the animation part of the clip. |
+| `holdMs` | `number` | `900` | How long the finished frame is held at the end. |
+| `background` | `string` | `'#faf8f3'` | Colour painted behind each frame. |
+| `onProgress` | `(fraction: number) => void` | — | Called once per frame with a value from 0 to 1. |
+
+Frame count is `round(durationMs / 1000 * fps)`, plus the hold frame. The clip is
+roughly `durationMs + holdMs` long.
+
+## downloadBlob
+
+<ApiSignature
+    signature={'downloadBlob(blob: Blob, filename: string): void'}
+    entry="@penwell/draw-on/core"
+    returns="void"
+    note="browser download"
+/>
+
+```ts
+import { downloadBlob } from '@penwell/draw-on/core';
+
+downloadBlob(blob, 'diagram.webm');
+```
+
+It creates an object URL, clicks a temporary anchor, removes it, and revokes the
+URL a second later. If you would rather show the clip in a `<video>` element,
+create your own object URL and revoke it when you are done.
+
+## Codec selection
+
+The recorder picks the first MIME type the engine reports as supported:
+
+1. `video/webm;codecs=vp9`
+2. `video/webm;codecs=vp8`
+3. `video/webm`
+
+MP4 is intentionally absent: `MediaRecorder` MP4 support is inconsistent across
+engines, and shipping a format that fails on some browsers is worse than naming
+the limitation. Transcode afterwards if you need MP4.
+
+## Errors
+
+| Condition | What happens |
+| --- | --- |
+| No `MediaRecorder` or no `canvas.captureStream` | `canRecordVideo()` is `false`; `recordDrawToWebM` throws `'Video recording is not supported in this browser.'` |
+| `canvas.getContext('2d')` returns null | Throws `'Could not create a drawing canvas.'` |
+| A frame cannot be rasterised | Throws `'Failed to rasterize a frame.'` |
+| The SVG references cross-origin resources | The frame may fail or come out blank; inline images as data URIs |
+
+<Callout type="warning" title="Recording blocks the main thread per frame">
+Each frame serialises the SVG, loads it as an image and draws it to a canvas.
+That is the cost of doing this without a server. Keep `fps × durationMs / 1000`
+in the low hundreds of frames for a responsive UI, and show the `onProgress`
+value so the wait is visible.
+</Callout>
+
+## A complete export flow
+
+```ts
+import {
+    canRecordVideo,
+    computeDims,
+    downloadBlob,
+    recordDrawToWebM,
+} from '@penwell/draw-on/core';
+
+async function exportClip(drawing: Drawing) {
+    if (!canRecordVideo()) {
+        throw new Error('This browser cannot record a canvas stream.');
+    }
+
+    const { width, height } = computeDims(drawing.el, 1920);
+
+    setBusy(true);
+    try {
+        const blob = await recordDrawToWebM(drawing.el, drawing.setProgress, {
+            width,
+            height,
+            fps: 30,
+            durationMs: 4200,
+            holdMs: 800,
+            background: '#fffdf7',
+            onProgress: setPercent,
+        });
+
+        downloadBlob(blob, 'draw-on.webm');
+        drawing.reveal();     // leave the artwork in its finished state
+    } finally {
+        setBusy(false);
+    }
+}
+```
+
+<LiveDemo
+    title="The full export flow"
+    description="Record, watch the frame-by-frame progress, and save the clip."
+    sourceId="record-webm"
+    controls="none"
+    autoPlay={false}
+/>
+
+## Next steps
+
+- [Recording to WebM](/docs/guides/recording) — choosing values, and the font pitfalls.
+- [Browser support](/docs/browser-support) — which engines can record.
+- [computeDims](/docs/api/compute-dims) — sizing the canvas.

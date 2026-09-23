@@ -1,0 +1,172 @@
+Every type the package exports, what it describes, and where it is used.
+
+## Importing types
+
+```ts
+import type { Drawing, DrawingOptions, DrawType, RecordOptions, Dimensions } from '@penwell/draw-on/core';
+
+import type { SketchDrawApi, SketchStatus, UseSketchDrawOptions, SketchDrawProps } from '@penwell/draw-on';
+```
+
+Types are re-exported from both entries where relevant, so there is no need to
+reach into `dist/`.
+
+## DrawingOptions
+
+```ts
+interface DrawingOptions {
+    duration?: number;                        // default 220, Vivus frames
+    type?: DrawType;                          // default 'oneByOne'
+    stroke?: string;                          // default '#27241a'
+    strokeWidth?: string | number;            // default '1.25'
+    revealStart?: number;                     // default 0.6, clamped to 0..0.999
+    revealMs?: number;                        // default 500
+}
+```
+
+Accepted by `createDrawing`, spread into `UseSketchDrawOptions` and passed
+through by `SketchDraw`. See [DrawingOptions](/docs/api/drawing-options).
+
+## DrawType
+
+```ts
+type DrawType = 'delayed' | 'sync' | 'oneByOne';
+```
+
+The stroke ordering strategy. `'oneByOne'` is the default.
+
+## Drawing
+
+```ts
+interface Drawing {
+    readonly el: SVGSVGElement;
+    hide(): void;
+    reveal(): void;
+    setProgress(fraction: number): void;
+    play(onDone?: () => void): void;
+    stop(): void;
+    reset(): void;
+    destroy(): void;
+}
+```
+
+What `createDrawing` returns, and what `useSketchDraw` exposes as `drawing`.
+Documented member by member in [createDrawing](/docs/api/create-drawing).
+
+## Dimensions
+
+```ts
+interface Dimensions {
+    width: number;
+    height: number;
+}
+```
+
+Returned by [`computeDims`](/docs/api/compute-dims) and reported by the hook as
+`dimensions`.
+
+## RecordOptions
+
+```ts
+interface RecordOptions {
+    width: number;                            // required
+    height: number;                           // required
+    fps?: number;                             // default 30
+    durationMs?: number;                      // default 4000
+    holdMs?: number;                          // default 900
+    background?: string;                      // default '#faf8f3'
+    onProgress?: (fraction: number) => void;  // 0 to 1, once per frame
+}
+```
+
+`width` and `height` are the only required fields; everything else has a default.
+See [Recording API](/docs/api/record).
+
+## SketchStatus
+
+```ts
+type SketchStatus = 'idle' | 'drawing' | 'done' | 'error';
+```
+
+The hook's `status`. `'idle'` means mounted but not drawing (for example with
+`autoPlay: false`, or after a reset), `'drawing'` means frames are running,
+`'done'` fires after the reveal, and `'error'` pairs with a message in `error`.
+
+## UseSketchDrawOptions
+
+```ts
+interface UseSketchDrawOptions extends DrawingOptions {
+    svgMarkup: string;                 // required
+    autoPlay?: boolean;                // default true
+    maxWidth?: number;                 // default 1280
+    onDone?: () => void;
+    onError?: (error: Error) => void;
+}
+```
+
+The full option set for [`useSketchDraw`](/docs/api/use-sketch-draw) and, because
+`SketchDrawProps` extends it, for [`SketchDraw`](/docs/api/sketch-draw) too.
+
+## SketchDrawApi
+
+```ts
+interface SketchDrawApi {
+    containerRef: React.RefObject<HTMLDivElement>;
+    status: SketchStatus;
+    error: string;
+    dimensions: Dimensions;
+    play: () => void;
+    setProgress: (fraction: number) => void;
+    canRecord: boolean;
+    exportWebM: (opts?: Partial<RecordOptions>) => Promise<Blob>;
+    drawing: Drawing | null;
+}
+```
+
+What the hook returns and what `SketchDraw`'s render prop receives.
+
+## SketchDrawProps
+
+```ts
+interface SketchDrawProps extends UseSketchDrawOptions {
+    className?: string;
+    style?: CSSProperties;
+    children?: (api: SketchDrawApi) => ReactNode;
+}
+```
+
+The component's props: the hook's options plus container styling and the render
+prop.
+
+## InvalidSvgError
+
+```ts
+class InvalidSvgError extends Error {
+    name: 'InvalidSvgError';
+    constructor(message?: string);
+}
+```
+
+Thrown by [`parseSvg`](/docs/api/parse-svg) when there is no `<svg>` root, or when
+there is no document to import into.
+
+## Quick reference
+
+| Type | Entry point | Used by |
+| --- | --- | --- |
+| `Drawing` | both | `createDrawing`, `useSketchDraw().drawing` |
+| `DrawingOptions` | both | `createDrawing`, `useSketchDraw`, `SketchDraw` |
+| `DrawType` | both | `DrawingOptions.type` |
+| `Dimensions` | core | `computeDims`, `SketchDrawApi.dimensions` |
+| `RecordOptions` | core | `recordDrawToWebM`, `exportWebM` |
+| `SketchStatus` | root | `SketchDrawApi.status` |
+| `SketchDrawApi` | root | `useSketchDraw` return, `SketchDraw` render prop |
+| `UseSketchDrawOptions` | root | `useSketchDraw`, `SketchDraw` |
+| `SketchDrawProps` | root | `SketchDraw` |
+| `InvalidSvgError` | core | `parseSvg` |
+
+## Next steps
+
+- [createDrawing](/docs/api/create-drawing) — the `Drawing` handle in use.
+- [useSketchDraw](/docs/api/use-sketch-draw) — `SketchDrawApi` in use.
+- [Constants and helpers](/docs/api/constants) — the non-type exports.

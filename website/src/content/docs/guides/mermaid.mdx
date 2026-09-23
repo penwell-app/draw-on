@@ -1,0 +1,142 @@
+Mermaid gives you an SVG string. Draw-On animates SVG. The two fit together with
+no glue code beyond a `useEffect` and a state variable — nothing has to be
+pre-rendered or checked into the repository.
+
+---
+
+## The whole recipe
+
+```tsx
+import { useEffect, useState } from 'react';
+import { useSketchDraw } from '@penwell/draw-on';
+
+const DEFINITION = `flowchart LR
+  A[Upload] --> B[Parse]
+  B --> C[Notebook]`;
+
+export function MermaidDiagram() {
+    const [svgMarkup, setSvgMarkup] = useState('');
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const render = async () => {
+            const mermaid = (await import('mermaid')).default;
+            mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
+            const { svg } = await mermaid.render('diagram', DEFINITION);
+            if (!cancelled) setSvgMarkup(svg);
+        };
+
+        void render();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    if (!svgMarkup) return <p>Rendering…</p>;
+    return <Animated svgMarkup={svgMarkup} />;
+}
+
+function Animated({ svgMarkup }: { svgMarkup: string }) {
+    const { containerRef, play, status } = useSketchDraw({ svgMarkup, duration: 280 });
+
+    return (
+        <>
+            <div ref={containerRef} />
+            <button onClick={play}>{status === 'drawing' ? 'Drawing…' : 'Replay'}</button>
+        </>
+    );
+}
+```
+
+Three details make this work: Mermaid is imported dynamically so it only loads
+where it is used, `startOnLoad: false` stops it from touching the document, and
+the animation component is separate so the hook only ever sees a real SVG string.
+
+<LiveDemo
+    title="Mermaid, rendered live and drawn on"
+    description="The diagram below was produced by Mermaid in your browser moments ago."
+    sourceId="mermaid"
+    controls="none"
+    autoPlayWhenInView
+    height={320}
+/>
+
+## Why the reveal matters here
+
+Mermaid output looks like this: filled node rectangles with no stroke, `<text>`
+labels, thin connector paths, and often `<marker>` arrowheads. Handed straight to
+a stroke animator, the boxes would appear instantly and only the connectors would
+draw.
+
+Draw-On fixes that in the first pass — every fill-only node gets a temporary
+outline — and then hides the fills and labels until the strokes are done. The
+result reads like someone sketching the diagram by hand.
+
+```ts
+// what the engine effectively does with Mermaid output
+createDrawing(svg, {
+    duration: 280,
+    type: 'oneByOne',     // node by node, connector by connector
+    revealStart: 0.5,     // labels return over the second half
+    strokeWidth: '1.25',
+});
+```
+
+## Tuning for diagram size
+
+| Diagram | Suggested options |
+| --- | --- |
+| Small flowchart (up to ~6 nodes) | `duration: 200`, `revealStart: 0.6` |
+| Medium diagram | `duration: 280`, `revealStart: 0.5` |
+| Large diagram (20+ nodes) | `duration: 420`, `type: 'delayed'`, `revealStart: 0.65` |
+| Dense graph, quick overview | `duration: 260`, `type: 'sync'` |
+
+`duration` is measured in animation frames, so a bigger diagram wants more of
+them: the same value over more shapes means each shape draws faster.
+
+## A few practical notes
+
+<Callout type="warning" title="Give Mermaid a unique id per render">
+`mermaid.render(id, definition)` creates temporary nodes keyed by that id. If you
+render the same diagram twice on one page, pass a different id (a `useId()` value
+works well) or the second render can collide with the first.
+</Callout>
+
+- **Themes** — use one of Mermaid's built-in themes (`neutral`, `default`, `dark`,
+  `forest`) or your own `themeVariables`. Draw-On takes the colours as it finds
+  them, so there is nothing to configure on its side.
+- **Re-rendering** — a new `svgMarkup` string re-mounts the drawing in
+  `useSketchDraw`, so an editor that regenerates the diagram on each change draws
+  each new version automatically.
+- **Scrolling into view** — for a page of diagrams, set `autoPlay: false` and call
+  `play()` from an `IntersectionObserver`; see
+  [Using with React](/docs/guides/react).
+- **Recording** — Mermaid output is self-contained, so `recordDrawToWebM` works
+  without the font caveats that affect externally-styled SVG; see
+  [Recording to WebM](/docs/guides/recording).
+- **Errors** — if the definition is invalid, Mermaid throws before
+  `useSketchDraw` is ever involved. Catch it in the effect and show your own
+  message.
+
+## Vanilla variant
+
+```ts
+import mermaid from 'mermaid';
+import { createDrawing, parseSvg } from '@penwell/draw-on/core';
+
+mermaid.initialize({ startOnLoad: false });
+
+const { svg } = await mermaid.render('flow', DEFINITION);
+const element = parseSvg(svg);
+document.querySelector('#stage')!.appendChild(element);
+
+const drawing = createDrawing(element, { duration: 280 });
+drawing.play();
+```
+
+## Next steps
+
+- [Excalidraw and tldraw](/docs/guides/excalidraw) — hand-drawn exports with rough fills.
+- [Preparing your SVGs](/docs/guides/preparing-svgs) — inline styles, fonts and ids.
+- [Examples](/examples) — a flowchart sample you can paste right now.

@@ -1,0 +1,121 @@
+## Install
+
+```bash
+npm install @penwell/draw-on
+```
+
+```bash
+pnpm add @penwell/draw-on
+```
+
+```bash
+yarn add @penwell/draw-on
+```
+
+```bash
+bun add @penwell/draw-on
+```
+
+The package depends on [`vivus`](https://www.npmjs.com/package/vivus) for the
+stroke animation and lists **React as an optional peer dependency**. If you are
+not using React, nothing React-shaped is imported and the bundler leaves it out.
+
+## Choose an entry point
+
+| Import | Contains | Use when |
+| --- | --- | --- |
+| `@penwell/draw-on` | Everything: core plus `useSketchDraw` and `SketchDraw` | You are in a React app |
+| `@penwell/draw-on/core` | `createDrawing`, `parseSvg`, `computeDims`, recording helpers, constants | You are in vanilla JS, Vue, Svelte, Angular, a worker or a plain script |
+
+```ts
+// React
+import { useSketchDraw } from '@penwell/draw-on';
+
+// Anything else
+import { createDrawing, parseSvg } from '@penwell/draw-on/core';
+```
+
+<Callout type="tip" title="Tree shaking works">
+The builds are ESM + CJS with `sideEffects: false`, so importing `useSketchDraw`
+does not drag the recorder into your bundle, and importing the core entry never
+touches React.
+</Callout>
+
+## Requirements
+
+| Requirement | Notes |
+| --- | --- |
+| A browser document | Parsing uses `DOMParser` and the engine measures paths with `getTotalLength()`, so there is no server-side rendering of the animation itself |
+| React 17+ *(optional)* | Only needed for `useSketchDraw` and `SketchDraw` |
+| TypeScript 4.7+ *(optional)* | Ships `.d.ts` for both entries, including the CJS variants |
+
+Recording needs a little more from the browser — `MediaRecorder` and
+`canvas.captureStream()`. The library gives you `canRecordVideo()` to check, and
+the [browser support page](/docs/browser-support) lists the details.
+
+## Verify the install
+
+```ts
+import { canRecordVideo, computeDims, parseSvg } from '@penwell/draw-on/core';
+
+const svg = parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#f4c95d"/></svg>');
+
+console.log(computeDims(svg));   // { width: 100, height: 100 }
+console.log(canRecordVideo());   // true in Chromium, false in some engines
+```
+
+If that prints a size and a boolean, the package resolves and the browser APIs
+it relies on are present.
+
+## Importing from a framework
+
+The core entry is a plain ES module, so it works anywhere a DOM exists:
+
+```tsx
+// Vue 3
+import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { createDrawing, parseSvg } from '@penwell/draw-on/core';
+
+const host = ref<HTMLElement | null>(null);
+let drawing: ReturnType<typeof createDrawing> | null = null;
+
+onMounted(() => {
+    if (!host.value) return;
+    const svg = parseSvg(markup);
+    host.value.appendChild(svg);
+    drawing = createDrawing(svg, { duration: 240 });
+    drawing.play();
+});
+
+onBeforeUnmount(() => drawing?.destroy());
+```
+
+```svelte
+<script>
+    import { onMount } from 'svelte';
+    import { createDrawing, parseSvg } from '@penwell/draw-on/core';
+
+    let host;
+    onMount(() => {
+        const svg = parseSvg(markup);
+        host.appendChild(svg);
+        const drawing = createDrawing(svg, { duration: 240 });
+        drawing.play();
+        return () => drawing.destroy();
+    });
+</script>
+
+<div bind:this={host} />
+```
+
+<Callout type="warning" title="Older build setups">
+If your bundler does not understand the `exports` map (webpack 4, very old
+Metro), point it at `dist/index.cjs` and `dist/core.cjs` directly, or import the
+ESM build from `dist/index.js`.
+</Callout>
+
+## Next steps
+
+- [Quickstart](/docs/quickstart) — first drawing, both flavours.
+- [DrawingOptions](/docs/api/drawing-options) — the six options and what they do.
+- [Troubleshooting](/docs/faq) — if something in your SVG will not animate.

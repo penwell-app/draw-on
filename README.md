@@ -42,6 +42,28 @@ Originally created for [Penwell](https://usepenwell.com/) to animate Mermaid dia
 
 ---
 
+## 📖 Documentation
+
+The full documentation site lives in [`website/`](./website) and covers everything in this README in more depth, with live demos you can replay, scrub and record, and a playground for your own SVG.
+
+- **Start here** - [Introduction](https://github.com/penwell-app/draw-on/blob/master/website/src/content/docs/introduction.mdx), Installation, Quickstart, How it works
+- **Guides** - React, Vanilla JS and TypeScript, scrubbing and scroll, recording to WebM
+- **Recipes** - Mermaid, Excalidraw and tldraw, Figma and handwriting, preparing your SVGs
+- **Reference** - `createDrawing`, `DrawingOptions`, `useSketchDraw`, `SketchDraw`, `parseSvg`, `computeDims`, the recording API, constants and types
+- **Playground** - Paste any inline SVG, tune the real options, copy the generated code
+
+Run it locally:
+
+```bash
+cd website
+npm install
+npm run dev        # http://localhost:5180
+```
+
+The site imports this package straight from `src/`, so every demo runs the code in your working tree.
+
+---
+
 ## Features
 
 - Animate SVG strokes progressively

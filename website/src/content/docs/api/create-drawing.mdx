@@ -1,0 +1,111 @@
+`createDrawing` is the engine. It takes an SVG element and an options object, and
+returns a small handle that drives the animation.
+
+<ApiSignature
+    signature={'createDrawing(svg: SVGSVGElement, opts?: DrawingOptions): Drawing'}
+    entry="@penwell/draw-on/core"
+    returns="Drawing"
+    note="mutates the SVG element"
+/>
+
+## Example
+
+```ts
+import { createDrawing, parseSvg } from '@penwell/draw-on/core';
+
+const host = document.querySelector<HTMLDivElement>('#stage')!;
+const svg = parseSvg(SVG_MARKUP);
+
+host.appendChild(svg);
+
+const drawing = createDrawing(svg, {
+    duration: 240,
+    type: 'oneByOne',
+    revealStart: 0.55,
+});
+
+drawing.play(() => console.log('drawn'));
+```
+
+<LiveDemo
+    title="createDrawing in action"
+    description="The smallest complete example: parse, create, play, scrub."
+    sourceId="core-api"
+    controls="none"
+    autoPlayWhenInView
+/>
+
+## The returned handle
+
+| Member | Signature | What it does |
+| --- | --- | --- |
+| `el` | `readonly SVGSVGElement` | The animated SVG, after Vivus rewrote its shapes into paths |
+| `play` | `(onDone?: () => void) => void` | Hides fills and labels, draws the strokes, reveals at the end |
+| `stop` | `() => void` | Stops the frame loop where it is |
+| `reset` | `() => void` | Rewinds the strokes to the undrawn state |
+| `hide` | `() => void` | Blanks fills and labels immediately, no fade |
+| `reveal` | `() => void` | Restores fills and labels with the CSS fade |
+| `setProgress` | `(fraction: number) => void` | Jumps to any point from 0 to 1, in either direction |
+| `destroy` | `() => void` | Releases Vivus' internal handle — call it when unmounting |
+
+```ts
+drawing.play();            // draw it
+drawing.stop();            // pause
+drawing.reset();           // rewind
+drawing.setProgress(0.4);  // scrub
+drawing.reveal();          // restore fills and labels without drawing
+drawing.destroy();         // clean up
+```
+
+## It mutates the element you pass
+
+Vivus converts rectangles, circles and ellipses into `<path>` elements so it can
+animate them. That means:
+
+- the `<svg>` you hand over is rewritten in place;
+- a second `createDrawing` call on the *same* element would fight the first one;
+- to keep your original markup, animate a clone — which is exactly what
+  `parseSvg(svgMarkup)` gives you every time.
+
+```ts
+// the original string is untouched
+const svg = parseSvg(markup);
+
+const drawing = createDrawing(svg, { duration: 240 });
+```
+
+## Frames, not milliseconds
+
+`duration` counts animation frames, following Vivus. A value of `220` at 60 frames
+per second is roughly 3.7 seconds. Because the same value is spread across all
+shapes, a diagram with 40 shapes draws each one faster than a diagram with 4.
+
+| Artwork | Suggested `duration` |
+| --- | --- |
+| 1–5 shapes | 120–200 |
+| A medium diagram | 220–300 |
+| 20–40 shapes | 320–480 |
+| A dense map or full page | 400–800, often with `type: 'delayed'` |
+
+## Replaying and re-rendering
+
+```ts
+// repeat the animation
+drawing.stop();
+drawing.reset();
+drawing.play();
+
+// or replace the artwork entirely
+drawing.destroy();
+host.replaceChildren();
+const next = parseSvg(nextMarkup);
+host.appendChild(next);
+const redrawn = createDrawing(next, { duration: 240 });
+redrawn.play();
+```
+
+## Next steps
+
+- [DrawingOptions](/docs/api/drawing-options) — every option with a live lab.
+- [Scrubbing and scroll](/docs/guides/scrubbing) — what `setProgress` unlocks.
+- [How it works](/docs/how-it-works) — the pipeline behind the handle.

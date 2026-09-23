@@ -1,0 +1,156 @@
+The recording API captures the draw-on animation to a **WebM** clip entirely in
+the browser: step the progress, rasterise each frame onto a canvas, and hand
+those frames to `MediaRecorder`. No server, no ffmpeg, no upload.
+
+---
+
+## Check the browser first
+
+```ts
+import { canRecordVideo } from '@penwell/draw-on/core';
+
+if (canRecordVideo()) {
+    // show the export button
+}
+```
+
+`canRecordVideo()` is `true` when `MediaRecorder` exists and
+`HTMLCanvasElement.prototype.captureStream` is a function. Gate the UI on it —
+there is no point offering a button that cannot work. The
+[browser support matrix](/docs/browser-support) has the details.
+
+## Record
+
+```ts
+import { canRecordVideo, computeDims, downloadBlob, parseSvg, createDrawing, recordDrawToWebM } from '@penwell/draw-on/core';
+
+const svg = parseSvg(SVG_MARKUP);
+document.querySelector('#stage')!.appendChild(svg);
+
+const drawing = createDrawing(svg, { duration: 240 });
+
+const { width, height } = computeDims(drawing.el);
+
+const blob = await recordDrawToWebM(drawing.el, drawing.setProgress, {
+    width,
+    height,
+    fps: 30,
+    durationMs: 4000,
+    holdMs: 900,
+    background: '#faf8f3',
+    onProgress: (fraction) => console.log(`${Math.round(fraction * 100)}%`),
+});
+
+downloadBlob(blob, 'diagram.webm');
+```
+
+The important argument is the second one: **`drawing.setProgress`**. Recording is
+a loop around the same method you use for scrubbing, which is why a clip matches
+what a reader sees frame for frame.
+
+<LiveDemo
+    title="Record in the browser"
+    description="Press Record WebM: the progress readout is the capture loop, frame by frame."
+    sourceId="record-webm"
+    controls="none"
+    autoPlay={false}
+/>
+
+## RecordOptions
+
+| Option | Type | Default | What it does |
+| --- | --- | --- | --- |
+| `width` | `number` | — | Output width in pixels; use `computeDims` to get the intrinsic size |
+| `height` | `number` | — | Output height in pixels |
+| `fps` | `number` | `30` | Frames captured per second |
+| `durationMs` | `number` | `4000` | Length of the animation part of the clip |
+| `holdMs` | `number` | `900` | How long the finished frame is held at the end |
+| `background` | `string` | `'#faf8f3'` | Canvas background painted behind each frame |
+| `onProgress` | `(fraction: number) => void` | — | Called for every frame, from 0 to 1 |
+
+The final clip is roughly `durationMs + holdMs` long. Beyond the last
+`setProgress(1)`, a hold frame is captured so the video does not snap shut
+immediately after the drawing finishes.
+
+## Choosing numbers that look good
+
+| Goal | Suggested values |
+| --- | --- |
+| Short social clip | `fps: 30`, `durationMs: 2500`, `holdMs: 600` |
+| Detailed diagram, no rush | `fps: 30`, `durationMs: 6000`, `holdMs: 1200` |
+| Smallest file | `fps: 24`, `durationMs: 3000`, `holdMs: 400` |
+| Presentation-grade smoothness | `fps: 60`, `durationMs: 5000`, `holdMs: 1200` |
+
+Two rules of thumb: the frame count is `fps × durationMs / 1000`, and each frame
+costs one SVG rasterisation — doubling both doubles the work. Keep the product
+under a few hundred frames for a clip that finishes quickly.
+
+## Sizing the canvas
+
+```ts
+const { width, height } = computeDims(drawing.el);        // intrinsic, capped at 1280
+const wide = computeDims(drawing.el, 1920);               // capped at 1920 instead
+```
+
+`computeDims` prefers the SVG `viewBox`, falls back to its rendered size, and
+preserves the aspect ratio while capping the width. Pass a larger `maxWidth` for
+sharper output if the source artwork is vector.
+
+## Why WebM and not MP4
+
+`MediaRecorder` MP4 support is inconsistent across engines and often absent
+entirely. Draw-On picks the best WebM codec available and fails loudly otherwise:
+
+1. `video/webm;codecs=vp9`
+2. `video/webm;codecs=vp8`
+3. `video/webm`
+
+If you need MP4, convert the WebM afterwards (ffmpeg, or a hosted transcoder) —
+the library will not claim support it cannot deliver.
+
+## What to watch out for
+
+<Callout type="warning" title="External stylesheets and fonts">
+Each frame is rasterised by serialising the SVG and drawing it as an image.
+Anything the SVG pulls in from outside — a stylesheet `<link>`, a web font used
+only by CSS, an `@font-face` rule — may not be applied in that snapshot. Inline
+the styles and convert the fonts to paths or embedded data URIs if a label looks
+off in the clip.
+</Callout>
+
+- **Remote images** — an `<image href="https://…">` inside the SVG can taint or
+  fail the canvas. Inline it as a data URI.
+- **Filters and gradients** — supported, because the browser rasterises them at
+  capture time, but they cost time per frame. Expect slower clips on filter-heavy
+  artwork.
+- **The reveal is real** — fills and labels fade in during the clip exactly as
+  they do on screen, because the loop drives the same `setProgress`.
+- **State afterwards** — recording finishes with progress at `1`. If you are
+  using the hook, `exportWebM()` calls `reveal()` for you; with the core API, call
+  `drawing.reveal()` yourself if you want the fade to settle nicely.
+- **Blob size** — a 4-second 1280×720 VP9 clip is typically a few hundred KB.
+
+## Showing the result instead of downloading
+
+`downloadBlob` is a convenience. You can also keep the blob in memory and hand it
+to a `<video>` element:
+
+```ts
+const blob = await recordDrawToWebM(drawing.el, drawing.setProgress, {
+    width,
+    height,
+});
+
+const url = URL.createObjectURL(blob);
+video.src = url;
+video.play();
+
+// later
+URL.revokeObjectURL(url);
+```
+
+## Next steps
+
+- [Recording API reference](/docs/api/record) — every argument and return value.
+- [browser support](/docs/browser-support) — which engines can record.
+- [Troubleshooting](/docs/faq) — when the file comes out empty.

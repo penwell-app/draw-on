@@ -1,0 +1,112 @@
+The engine's selectors and default ink values are exported, so you can reason
+about — or extend — exactly what it touches.
+
+## Selectors
+
+```ts
+import { SHAPE_SELECTOR, TEXT_SELECTOR } from '@penwell/draw-on/core';
+```
+
+| Constant | Value | Used for |
+| --- | --- | --- |
+| `SHAPE_SELECTOR` | `'path, rect, circle, ellipse, line, polyline, polygon'` | Finding every drawable shape, both for stroke synthesis and for remembering which fills to hide |
+| `TEXT_SELECTOR` | `'text, foreignObject, image'` | Finding the elements that stay hidden until the reveal |
+
+Both are plain CSS selector strings, so they work with any DOM query:
+
+```ts
+const shapes = svg.querySelectorAll(SHAPE_SELECTOR);
+const labels = svg.querySelectorAll(TEXT_SELECTOR);
+
+console.log(shapes.length, labels.length);
+```
+
+Because the engine uses these exact selectors, they are also the honest answer to
+"what will animate?". Anything outside them — `<g>`, `<defs>`, `<clipPath>`,
+`<marker>` — is not animated directly; the shapes inside a group are.
+
+## Default ink values
+
+```ts
+import { DEFAULT_STROKE, DEFAULT_STROKE_WIDTH } from '@penwell/draw-on/core';
+```
+
+| Constant | Value | Meaning |
+| --- | --- | --- |
+| `DEFAULT_STROKE` | `'#27241a'` | The outline colour given to fill-only shapes |
+| `DEFAULT_STROKE_WIDTH` | `'1.25'` | The outline width given to shapes that have none |
+
+They match the `stroke` and `strokeWidth` options, which are the supported way to
+override them:
+
+```ts
+import { createDrawing } from '@penwell/draw-on/core';
+
+createDrawing(svg, {
+    stroke: DEFAULT_STROKE,          // explicit, same as the default
+    strokeWidth: DEFAULT_STROKE_WIDTH,
+});
+```
+
+## isPaint
+
+<ApiSignature
+    signature={'isPaint(value: string | null): boolean'}
+    entry="@penwell/draw-on/core"
+    returns="boolean"
+    note="fill/stroke predicate"
+/>
+
+The predicate the engine uses to decide whether a value paints anything.
+
+| Input | Result |
+| --- | --- |
+| `'#f4c95d'` | `true` |
+| `'rgb(39, 36, 26)'` | `true` |
+| `'url(#gradient)'` | `true` |
+| `null` | `false` |
+| `''` | `false` |
+| `'none'` | `false` |
+| `'transparent'` | `false` |
+| `'rgba(0, 0, 0, 0)'` | `false` |
+
+```ts
+import { isPaint } from '@penwell/draw-on/core';
+
+isPaint('#f4c95d');          // true
+isPaint('none');             // false
+isPaint(null);               // false
+```
+
+It is used twice per shape in the synthesis pass — once for the stroke, once for
+the fill — which makes it a handy way to preview what the engine will consider
+drawable:
+
+```ts
+import { isPaint, SHAPE_SELECTOR } from '@penwell/draw-on/core';
+
+const drawable = [...svg.querySelectorAll(SHAPE_SELECTOR)].filter((shape) =>
+    isPaint(shape.getAttribute('fill') || getComputedStyle(shape).fill),
+);
+
+console.log(`${drawable.length} filled shapes will be revealed at the end`);
+```
+
+## Where they are exported from
+
+| Constant | `@penwell/draw-on` | `@penwell/draw-on/core` |
+| --- | --- | --- |
+| `SHAPE_SELECTOR` | yes | yes |
+| `TEXT_SELECTOR` | yes | yes |
+| `DEFAULT_STROKE` | yes | yes |
+| `DEFAULT_STROKE_WIDTH` | yes | yes |
+| `isPaint` | yes | yes |
+
+Both entry points re-export the same values, so a React app can import them from
+the root import without pulling anything extra into the bundle.
+
+## Next steps
+
+- [DrawingOptions](/docs/api/drawing-options) — `stroke` and `strokeWidth` in context.
+- [How it works](/docs/how-it-works) — where these constants are used in the pipeline.
+- [Type reference](/docs/api/types) — the exported types.

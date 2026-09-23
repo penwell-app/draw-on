@@ -56,6 +56,14 @@
         "demo-notebook.gif",
         "draw-on.svg"
     ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/penwell-app/draw-on.git"
+    },
+    "homepage": "https://github.com/penwell-app/draw-on#readme",
+    "bugs": {
+        "url": "https://github.com/penwell-app/draw-on/issues"
+    },
     "scripts": {
         "build": "tsup",
         "dev": "tsup --watch",

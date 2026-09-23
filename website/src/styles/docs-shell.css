@@ -1,0 +1,180 @@
+/* ---------- docs shell ---------- */
+
+.docs-shell {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--toc-w);
+    gap: 36px;
+    max-width: var(--shell-w);
+    margin: 0 auto;
+    padding: 32px 24px 40px;
+    align-items: start;
+}
+
+.docs-sidebar {
+    position: sticky;
+    top: calc(var(--header-h) + 20px);
+    max-height: calc(100vh - var(--header-h) - 40px);
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.sidebar-group + .sidebar-group {
+    margin-top: 22px;
+}
+
+.sidebar-group h4 {
+    margin: 0 0 8px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-mute);
+}
+
+.sidebar-group ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-left: 1px solid var(--line-soft);
+}
+
+.sidebar-group a {
+    display: block;
+    margin-left: -1px;
+    padding: 7px 10px;
+    border-left: 2px solid transparent;
+    color: var(--text-soft);
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.sidebar-group a:hover {
+    color: var(--text);
+    text-decoration: none;
+}
+
+.sidebar-group a.active {
+    color: var(--text-strong);
+    font-weight: 600;
+    border-left-color: var(--accent);
+    background: linear-gradient(90deg, var(--accent-soft), transparent);
+}
+
+.docs-main {
+    min-width: 0;
+    max-width: var(--content-w);
+}
+
+.docs-toc {
+    position: sticky;
+    top: calc(var(--header-h) + 20px);
+    max-height: calc(100vh - var(--header-h) - 40px);
+    overflow-y: auto;
+    font-size: 13.5px;
+}
+
+.docs-toc h4 {
+    margin: 0 0 10px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-mute);
+}
+
+.docs-toc ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.docs-toc a {
+    display: block;
+    padding: 5px 0 5px 10px;
+    border-left: 1px solid var(--line-soft);
+    color: var(--text-soft);
+    text-decoration: none;
+}
+
+.docs-toc a.depth-3 {
+    padding-left: 20px;
+    font-size: 13px;
+}
+
+.docs-toc a:hover {
+    color: var(--text);
+}
+
+.docs-toc a.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+@media (max-width: 1180px) {
+    .docs-shell {
+        grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    }
+
+    .docs-toc {
+        display: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .docs-shell {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 20px 18px 32px;
+    }
+
+    .docs-sidebar {
+        display: none;
+    }
+
+    .docs-main {
+        max-width: none;
+    }
+}
+
+/* ---------- mobile docs drawer ---------- */
+
+.drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: rgba(20, 19, 15, 0.45);
+}
+
+.drawer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 46;
+    width: min(320px, 86vw);
+    padding: 20px 18px 40px;
+    overflow-y: auto;
+    background: var(--surface-raised);
+    border-right: 1px solid var(--line);
+    box-shadow: var(--shadow-lg);
+}
+
+.drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+/* The drawer trigger only makes sense where the sidebar is hidden. */
+.drawer-trigger {
+    display: none;
+    margin: 16px 18px 0;
+}
+
+@media (max-width: 900px) {
+    .drawer-trigger {
+        display: inline-flex;
+    }
+}
+

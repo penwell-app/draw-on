@@ -1,0 +1,285 @@
+/* Code block chrome & syntax highlighter styles.
+   Styled like a modern code editor (One Dark Pro) with traffic lights,
+   tab headers, line numbers, and crisp token colors. */
+
+.code-block {
+    position: relative;
+    margin: 1.35em 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius);
+    background: #1e1e24;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+    overflow: hidden;
+}
+
+[data-theme='dark'] .code-block {
+    background: #18181d;
+    border-color: rgba(255, 255, 255, 0.09);
+}
+
+.code-block-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.code-block-dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.code-block-dots .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.code-block-dots .dot-red {
+    background: #ff5f56;
+    box-shadow: 0 0 3px rgba(255, 95, 86, 0.4);
+}
+
+.code-block-dots .dot-yellow {
+    background: #ffbd2e;
+    box-shadow: 0 0 3px rgba(255, 189, 46, 0.4);
+}
+
+.code-block-dots .dot-green {
+    background: #27c93f;
+    box-shadow: 0 0 3px rgba(39, 201, 63, 0.4);
+}
+
+.code-block-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: rgba(246, 242, 232, 0.85);
+}
+
+.code-block-file-icon {
+    color: var(--gold);
+    opacity: 0.9;
+}
+
+.code-block-lang {
+    margin-left: auto;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(246, 242, 232, 0.55);
+}
+
+.code-block-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(246, 242, 232, 0.82);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.code-block-copy:hover {
+    color: #fffdf7;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.code-block pre {
+    margin: 0;
+    padding: 16px 18px;
+    overflow-x: auto;
+    overflow-y: auto;
+    background: transparent !important;
+    color: #abb2bf;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.65;
+    tab-size: 4;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.code-block pre::-webkit-scrollbar,
+.code-tabs-bar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    background: transparent;
+}
+
+.code-block pre::-webkit-scrollbar-thumb,
+.code-tabs-bar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+}
+
+.code-block pre code {
+    font-family: inherit;
+    font-size: inherit;
+    background: none;
+    padding: 0;
+}
+
+/* Line numbers gutter for authentic text editor feel */
+.code-editor-lines pre code {
+    counter-reset: editor-line;
+    display: block;
+}
+
+.code-editor-lines pre .line {
+    display: block;
+    position: relative;
+    padding-left: 3.4em;
+    min-height: 1.55em;
+}
+
+.code-editor-lines pre .line::before {
+    position: absolute;
+    left: 0;
+    width: 2.2em;
+    text-align: right;
+    counter-increment: editor-line;
+    content: counter(editor-line);
+    color: rgba(255, 255, 255, 0.22);
+    user-select: none;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 400;
+}
+
+/* Fallback if a token has inline background */
+.code-block pre code span {
+    background: transparent !important;
+}
+
+/* ---------- code tabs ---------- */
+
+.code-tabs {
+    margin: 1.35em 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius);
+    background: #1e1e24;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme='dark'] .code-tabs {
+    background: #18181d;
+    border-color: rgba(255, 255, 255, 0.09);
+}
+
+.code-tabs-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    overflow-x: auto;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.code-tabs-list {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.code-tab-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: rgba(246, 242, 232, 0.65);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.code-tab-button:hover {
+    color: #fffdf7;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.code-tab-button[aria-selected='true'] {
+    color: #fffdf7;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.code-tab-icon {
+    opacity: 0.6;
+}
+
+.code-tab-button[aria-selected='true'] .code-tab-icon {
+    opacity: 1;
+    color: var(--gold);
+}
+
+.code-tabs-bar .code-tabs-file {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: rgba(246, 242, 232, 0.42);
+    white-space: nowrap;
+}
+
+.code-tabs-bar .code-block-copy {
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.code-tabs .code-block {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+}
+
+.code-tabs .code-block .code-block-head {
+    display: none;
+}
+
+/* ---------- inline code inside prose ---------- */
+
+.prose :not(pre) > code {
+    padding: 2px 6px;
+    border: 1px solid var(--line-soft);
+    border-radius: 6px;
+    background: var(--line-soft);
+    font-family: var(--mono);
+    font-size: 0.88em;
+    color: var(--text-strong);
+    white-space: nowrap;
+}

@@ -1,0 +1,145 @@
+Every option is optional. These are the defaults, and this page is also a lab:
+change a value and the preview rebuilds with the real engine.
+
+## The options
+
+| Option | Type | Default | What it does |
+| --- | --- | --- | --- |
+| [`duration`](#duration) | `number` | `220` | Vivus animation length **in frames**. Higher is slower. |
+| [`type`](#type) | `'oneByOne' \| 'delayed' \| 'sync'` | `'oneByOne'` | Ordering strategy for the strokes. |
+| [`stroke`](#stroke) | `string` | `'#27241a'` | Colour given to fill-only shapes so they have an outline to draw. |
+| [`strokeWidth`](#stroke-width) | `string \| number` | `'1.25'` | Stroke width given to fill-only shapes that have none. |
+| [`revealStart`](#reveal-start) | `number` | `0.6` | Progress at which fills and labels start fading in, 0–1. |
+| [`revealMs`](#reveal-ms) | `number` | `500` | Fade duration in milliseconds used by `hide()` and `reveal()`. |
+
+```ts
+import type { DrawingOptions, DrawType } from '@penwell/draw-on/core';
+
+const options: DrawingOptions = {
+    duration: 260,
+    type: 'delayed',
+    stroke: '#27241a',
+    strokeWidth: 1.25,
+    revealStart: 0.5,
+    revealMs: 650,
+};
+```
+
+## Live lab
+
+Move the controls — the drawing is rebuilt with the new values on the spot, and
+the generated code below updates to match.
+
+<OptionsLab />
+
+## duration
+
+Frames, not milliseconds. `220` frames at 60fps is about 3.7 seconds, and the
+total is shared between the shapes, so more shapes means each draws faster.
+
+```ts
+createDrawing(svg, { duration: 220 });   // default
+createDrawing(svg, { duration: 420 });   // a large diagram, slower reveal
+```
+
+## type
+
+| Value | Behaviour | Best for |
+| --- | --- | --- |
+| `'oneByOne'` | Each shape draws, then the next (default) | Flowcharts, notebooks, most artwork |
+| `'delayed'` | Shapes start before the previous one finishes | Hand-drawn exports, handwriting |
+| `'sync'` | All shapes draw together | Quick flourishes, small diagrams |
+
+<LiveDemo
+    title="Compare the three orderings"
+    description="The same drawing, alternating between sequential and synchronised."
+    sampleId="flowchart"
+    options={{ type: 'delayed', duration: 300 }}
+    controls="full"
+    autoPlayWhenInView
+/>
+
+## stroke
+
+The synthetic outline used only for shapes that paint a fill but have no stroke
+of their own. It is also used for the reveal, so pick something that reads as ink
+against your fills — a dark value for light artwork, a light one for dark boards.
+
+```ts
+// dark artwork
+createDrawing(svg, { stroke: '#27241a' });
+
+// dark canvas
+createDrawing(svg, { stroke: '#f6f2e8' });
+```
+
+<LiveDemo
+    title="A dark canvas needs a light outline"
+    description="The same engine, driven with stroke: '#f6f2e8'."
+    sampleId="dark-canvas"
+    options={{ stroke: '#f6f2e8', duration: 240 }}
+    controls="replay"
+    autoPlayWhenInView
+/>
+
+## strokeWidth
+
+Applied only when a shape has no `stroke-width` of its own. Notes:
+
+- It is written to the attribute as a **string** (`'1.25'`), because SVG does not
+  care about the number type.
+- Hairline strokes (`1`–`1.5`) read as pencil; `2`–`3` reads as a marker.
+- Thicker synthetic strokes make outline-heavy diagrams feel heavier, so keep this
+  small when the artwork is dense.
+
+```ts
+createDrawing(svg, { strokeWidth: 1.25 });   // default, pencil
+createDrawing(svg, { strokeWidth: 2.5 });    // marker
+```
+
+## revealStart
+
+Where the fills and labels begin to appear. The engine clamps the value into
+`0 … 0.999`, so there is always a sliver of stroke drawing before anything is
+revealed.
+
+```ts
+createDrawing(svg, { revealStart: 0.6 });   // default: reveal over the last 40%
+createDrawing(svg, { revealStart: 0.3 });   // reveal for most of the animation
+createDrawing(svg, { revealStart: 0.9 });   // strokes almost finish first
+createDrawing(svg, { revealStart: 0.999 }); // effectively never reveal
+```
+
+The fraction of the reveal at a given progress is:
+
+| Progress | `revealStart: 0.6` | `revealStart: 0.3` |
+| --- | --- | --- |
+| `0.2` | 0 | 0 |
+| `0.4` | 0 | 0.14 |
+| `0.6` | 0 | 0.43 |
+| `0.8` | 0.5 | 0.71 |
+| `1` | 1 | 1 |
+
+## revealMs
+
+The CSS transition duration for `hide()` and `reveal()` — in other words, the
+fade you see at the end of `play()`. Scrubbing bypasses it, because
+`setProgress` writes opacity directly.
+
+```ts
+createDrawing(svg, { revealMs: 500 });    // default
+createDrawing(svg, { revealMs: 1200 });   // a slower, calmer settle
+```
+
+## Where the options are read
+
+Options are read **once**, when `createDrawing` runs. Changing the object
+afterwards has no effect — rebuild the drawing to apply new values. In React that
+is why `useSketchDraw` only rebuilds when `svgMarkup` changes; the playground on
+this site uses a small wrapper that rebuilds on option changes.
+
+## Next steps
+
+- [createDrawing](/docs/api/create-drawing) — the handle these options configure.
+- [How it works](/docs/how-it-works) — the reveal maths in context.
+- [Playground](/playground) — the same lab, with an editor for your own SVG.

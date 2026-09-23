@@ -1,0 +1,94 @@
+`SketchDraw` is a thin, unstyled wrapper around
+[`useSketchDraw`](/docs/api/use-sketch-draw): it renders the host element and
+hands the whole API to a render prop so you can put controls wherever you like.
+
+<ApiSignature
+    signature={'<SketchDraw {...options}>{children?: (api: SketchDrawApi) => ReactNode}</SketchDraw>'}
+    entry="@penwell/draw-on"
+    returns="React fragment"
+    note="unstyled"
+/>
+
+## Props
+
+| Prop | Type | Default | What it does |
+| --- | --- | --- | --- |
+| `svgMarkup` | `string` | — | Markup to animate. Required. |
+| `className` | `string` | — | Class on the container div. |
+| `style` | `CSSProperties` | — | Inline styles for the container div. |
+| `children` | `(api: SketchDrawApi) => ReactNode` | — | Render prop for controls; rendered **after** the container. |
+| *plus* | | | Every [`UseSketchDrawOptions`](/docs/api/use-sketch-draw) field — `autoPlay`, `maxWidth`, `onDone`, `onError`, and all [`DrawingOptions`](/docs/api/drawing-options) |
+
+## Example
+
+```tsx
+import { SketchDraw } from '@penwell/draw-on';
+
+<SketchDraw
+    svgMarkup={SVG}
+    className="stage"
+    duration={240}
+    revealStart={0.55}
+    onDone={() => setDone(true)}
+>
+    {({ play, setProgress, canRecord, exportWebM }) => (
+        <div className="controls">
+            <button onClick={play}>Replay</button>
+
+            <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.001}
+                onChange={(event) => setProgress(Number(event.target.value))}
+            />
+
+            {canRecord && <button onClick={() => void exportWebM()}>Export WebM</button>}
+        </div>
+    )}
+</SketchDraw>;
+```
+
+<LiveDemo
+    title="SketchDraw with a custom control bar"
+    description="The container is unstyled, so the example supplies its own controls."
+    sourceId="react-component"
+    controls="none"
+    autoPlayWhenInView
+/>
+
+## What it renders
+
+```tsx
+<>
+    <div ref={api.containerRef} className={className} style={style} />
+    {children?.(api)}
+</>
+```
+
+Two consequences worth knowing:
+
+<Callout type="warning" title="It renders a fragment, not a wrapper">
+The container div and the render-prop output are siblings. If your component
+returns `SketchDraw` at the top level, wrap it in a fragment or a parent element
+so the two siblings have somewhere to live.
+</Callout>
+
+- The container is empty on purpose. Give it `className` and your own layout
+  rules; the SVG inside is sized with `max-width: 100%` and `height: auto`.
+- Without `children`, `SketchDraw` is just a container that draws once — useful
+  for a decorative illustration that needs no controls.
+
+## Choosing between the three
+
+| Approach | Use when |
+| --- | --- |
+| `SketchDraw` | You want the drawing on screen with minimal wiring |
+| `useSketchDraw` | You need the container inside a layout you control |
+| `createDrawing` | You need live option changes, several drawings, or no React |
+
+## Next steps
+
+- [useSketchDraw](/docs/api/use-sketch-draw) — the hook and its lifecycle notes.
+- [Using with React](/docs/guides/react) — autoplay on view, reduced motion, SSR.
+- [Playground](/playground) — see the component's props in generated code.

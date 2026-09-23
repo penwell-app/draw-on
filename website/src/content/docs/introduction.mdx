@@ -1,0 +1,107 @@
+Draw-On animates **any inline SVG** so that it draws itself: the strokes come on
+first, then the fills and the labels fade in behind them. It is the same engine
+that [Penwell](https://usepenwell.com/) uses to animate Mermaid diagrams and
+handwritten notebook pages, packaged as a small, framework-agnostic library.
+
+`import { createDrawing } from '@penwell/draw-on/core'` — that is the whole idea.
+Give it an `<svg>` element, call `play()`, and the drawing appears.
+
+---
+
+## The problem it solves
+
+SVG animation libraries such as [Vivus](https://github.com/maxwellito/vivus) are
+very good at one thing: animating the outline of a shape by walking it like a
+pen stroke. That works beautifully for line art.
+
+Real diagrams rarely look like line art. Mermaid, Excalidraw, Figma exports and
+most design tools produce markup where:
+
+- boxes and nodes are **filled shapes** with `fill` set and no `stroke` at all,
+- arrows and connectors are thin strokes that use markers,
+- labels are `<text>` elements that sit on top of everything,
+- decorations use filters, gradients, dashes and opacity.
+
+If you hand that markup to a stroke-only animator, the filled boxes have nothing
+to draw, and the text is on screen before the drawing starts. The result is a
+diagram that pops into existence rather than drawing itself.
+
+## The mental model
+
+Draw-On keeps the stroke animation and adds the two missing beats around it:
+
+| Beat | What happens | Why |
+| --- | --- | --- |
+| **1. Strokes** | Every shape is animated as an outline, one by one | Stroke-only shapes already look right |
+| **2. Fills** | Filled shapes are given a temporary outline so they can participate | A filled box with no stroke has no length to draw |
+| **3. Labels** | `<text>`, `<image>` and `<foreignObject>` stay hidden, then fade in | Text on screen too early breaks the illusion |
+
+Then the temporary outlines disappear and the fills fade in, so the finished
+frame is exactly your original artwork.
+
+<LiveDemo
+    title="hello-strokes.svg"
+    description="A stroke, two filled dots and one label — all three beats in one small SVG."
+    sampleId="hello-strokes"
+    controls="full"
+    record
+    autoPlayWhenInView
+/>
+
+## What you get
+
+- **Progressive strokes** with three ordering strategies: `oneByOne`, `delayed` and `sync`.
+- **Fill synthesis** — fill-only shapes are outlined, drawn, then filled.
+- **A reveal window** controlled by `revealStart` and `revealMs`.
+- **Scrubbing** — `drawing.setProgress(0.5)` puts the animation anywhere you like, in both directions.
+- **In-browser recording** — `recordDrawToWebM` renders every frame to a WebM clip. No server, no ffmpeg.
+- **React bindings** — `useSketchDraw` and the unstyled `SketchDraw` component.
+- **ESM and CJS builds**, tree-shakeable, with TypeScript types included.
+
+## When it is the right tool
+
+Use it when the artwork is an SVG you already have — exported, generated or
+hand-written — and you want it to appear progressively:
+
+<CardGrid>
+    <Card title="Mermaid diagrams" tag="Recipe" href="/docs/guides/mermaid">
+        Render at runtime, then animate the output. Nothing needs to be pre-baked.
+    </Card>
+    <Card title="Notebook and handwriting" tag="Recipe" href="/docs/guides/figma-and-handwriting">
+        Pages of notes, checklists and signatures that draw themselves on.
+    </Card>
+    <Card title="Annotations" tag="Recipe" href="/docs/guides/excalidraw">
+        Underlines, callouts and margin notes on top of a document.
+    </Card>
+    <Card title="Video clips" tag="Recipe" href="/docs/guides/recording">
+        Export any of the above as a WebM you can attach to a release note or a post.
+    </Card>
+</CardGrid>
+
+## When it is not
+
+- You want morphing, physics or keyframe timelines across many SVGs — this is a
+  draw-on effect, not a general animation engine.
+- Your artwork must stay untouched in the DOM and you cannot pass a clone — the
+  engine mutates the element it is given (it says so again in
+  [How it works](/docs/how-it-works)).
+- You need MP4 output. `MediaRecorder` MP4 support is inconsistent across
+  browsers, so Draw-On ships WebM only; see
+  [Recording](/docs/guides/recording).
+
+## Next steps
+
+<CardGrid>
+    <Card title="Install it" tag="Start" href="/docs/installation">
+        Pick the entry point that fits your stack, then confirm the build.
+    </Card>
+    <Card title="Quickstart" tag="Start" href="/docs/quickstart">
+        First drawing in about sixty seconds, in React or vanilla JS.
+    </Card>
+    <Card title="How it works" tag="Concept" href="/docs/how-it-works">
+        The pipeline, the reveal window maths and the lifecycle, in detail.
+    </Card>
+    <Card title="Playground" tag="Try" href="/playground">
+        Paste your own SVG and tune every option live.
+    </Card>
+</CardGrid>

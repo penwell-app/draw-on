@@ -1,0 +1,132 @@
+Sixty seconds, two flavours, one import each. Everything below is the real
+engine — the demos on this page are running the package, not a recording.
+
+---
+
+## React
+
+```tsx
+import { useSketchDraw } from '@penwell/draw-on';
+
+const SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
+  <rect x="20" y="60" width="140" height="70" rx="12" fill="#f4c95d"/>
+  <path d="M160 95 H260" stroke="#27241a" stroke-width="3" fill="none"/>
+  <rect x="260" y="60" width="120" height="70" rx="12" fill="#a8d8ea"/>
+  <text x="200" y="180" text-anchor="middle" font-family="system-ui" font-size="14">two boxes</text>
+</svg>`;
+
+export function Diagram() {
+    const { containerRef, status, play } = useSketchDraw({ svgMarkup: SVG });
+
+    return (
+        <>
+            <div ref={containerRef} />
+            <button onClick={play}>{status === 'drawing' ? 'Drawing…' : 'Replay'}</button>
+        </>
+    );
+}
+```
+
+Two things to know: the hook parses the markup, mounts the SVG into
+`containerRef` and starts drawing on mount, and it **rebuilds only when
+`svgMarkup` changes** — tuning options on the fly needs the
+[core API](/docs/guides/vanilla) instead. That behaviour is documented in
+[useSketchDraw](/docs/api/use-sketch-draw).
+
+That is the whole hook in action, running below:
+
+<LiveDemo
+    title="useSketchDraw in about twenty lines"
+    description="Replay, scrub and export — the component source is at the bottom of this demo."
+    sourceId="react-hook"
+    controls="full"
+    autoPlayWhenInView
+/>
+
+## Vanilla JS and TypeScript
+
+```ts
+import { createDrawing, parseSvg } from '@penwell/draw-on/core';
+
+const host = document.querySelector<HTMLDivElement>('#stage')!;
+const svg = parseSvg(SVG_MARKUP);
+
+host.appendChild(svg);
+
+const drawing = createDrawing(svg, { duration: 240 });
+drawing.play(() => console.log('drawn'));
+```
+
+`parseSvg` imports the markup into the current document; `createDrawing` takes
+that element and returns a handle with `play`, `stop`, `reset`, `hide`,
+`reveal`, `setProgress` and `destroy`. The vanilla path gives you the whole
+handle, so scrubbing and re-playing are one line each.
+
+<LiveDemo
+    title="The core API, in full"
+    description="parseSvg → createDrawing → setProgress, with no framework involved."
+    sourceId="core-api"
+    controls="none"
+    autoPlayWhenInView
+/>
+
+## Add a scrubber
+
+`setProgress` accepts any fraction between 0 and 1, in either direction:
+
+```tsx
+<input
+    type="range"
+    min={0}
+    max={1}
+    step={0.001}
+    onChange={(event) => drawing.setProgress(Number(event.target.value))}
+/>
+```
+
+That single call is what makes sliders, timelines, scroll-linked reveals and
+frame-accurate recording possible. See [Scrubbing and scroll](/docs/guides/scrubbing).
+
+## Record the result
+
+```ts
+import { canRecordVideo, computeDims, downloadBlob, recordDrawToWebM } from '@penwell/draw-on/core';
+
+if (canRecordVideo()) {
+    const { width, height } = computeDims(drawing.el);
+
+    const blob = await recordDrawToWebM(drawing.el, drawing.setProgress, {
+        width,
+        height,
+        durationMs: 4000,
+    });
+
+    downloadBlob(blob, 'diagram.webm');
+}
+```
+
+Full details, including the options that shape the clip, live in
+[Recording to WebM](/docs/guides/recording).
+
+## What just happened
+
+1. Every shape in your SVG was measured and converted into a drawable path.
+2. Fill-only shapes were given a temporary stroke, so they had an outline to draw.
+3. Fills, text and images were hidden, then revealed as the drawing finished.
+
+## Next steps
+
+<CardGrid>
+    <Card title="How it works" tag="Concept" href="/docs/how-it-works">
+        The same three beats, explained at the level of the source.
+    </Card>
+    <Card title="DrawingOptions" tag="Reference" href="/docs/api/drawing-options">
+        Tune the duration, ordering and reveal window with a live lab.
+    </Card>
+    <Card title="Examples" tag="Try" href="/examples">
+        Paste-ready SVGs for flowcharts, notebooks and annotations.
+    </Card>
+    <Card title="Troubleshooting" tag="Help" href="/docs/faq">
+        When something in your SVG will not draw.
+    </Card>
+</CardGrid>

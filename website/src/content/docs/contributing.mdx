@@ -1,0 +1,126 @@
+Contributions are welcome — bug reports, browser fixes, documentation, new
+recipes, or a better reveal. This page covers the package and this website, since
+they live in the same repository.
+
+---
+
+## Setting up
+
+```bash
+git clone https://github.com/penwell-app/draw-on.git
+cd draw-on
+npm install
+```
+
+| Command | What it does |
+| --- | --- |
+| `npm run build` | Build ESM + CJS + types into `dist/` with tsup |
+| `npm run dev` | Rebuild the package in watch mode |
+| `npm run typecheck` | `tsc --noEmit` over `src/` |
+
+## The website
+
+The documentation site lives in `website/` and is a Vite + React app that imports
+the library **from `src/`** through an alias, so the demos you see locally are the
+code you are editing.
+
+```bash
+cd website
+npm install
+
+npm run dev          # http://localhost:5180
+npm run typecheck    # note below
+npm test             # Vitest + jsdom
+npm run build        # typecheck, then vite build
+npm run preview      # serve the production build
+npm run lint
+```
+
+<Callout type="note" title="Type checking the site">
+The site type-checks against the package's published declarations
+(`dist/*.d.ts`) so that public API changes are reviewed deliberately, while the
+running code comes from `src/`. If `website` reports missing types, build the
+package first (`npm run build` in the repository root). To type-check the library
+sources directly, run `npm run typecheck:package` inside `website/`.
+</Callout>
+
+Where things live in the site:
+
+| Path | Purpose |
+| --- | --- |
+| `website/src/content/docs/**/*.mdx` | Every documentation page — the content you are reading |
+| `website/src/content/nav.ts` | Sidebar, ordering, slugs and summaries; drives search and pagination |
+| `website/src/content/samples.ts` | The SVG samples used by the playground and gallery |
+| `website/src/demos/` | The live demo components; each one is also the code shown on the page |
+| `website/src/components/` | Docs components (code blocks, callouts, tables) and demo chrome |
+| `website/src/lib/` | Small hooks: live drawing, headings, theme, clipboard, scrollspy |
+
+## Adding a documentation page
+
+1. Create the MDX file under `website/src/content/docs/`.
+2. Add it to `NAV` in `website/src/content/nav.ts` — the sidebar entry, the slug,
+   search indexing and prev/next pagination all come from that entry.
+3. Run `npm test` in `website/`: a test asserts that every nav entry resolves to a
+   real file, and that no file is missing from the nav.
+
+## Adding a sample or a demo
+
+- **A sample** is an SVG string plus metadata in `content/samples.ts`. It appears
+  in the playground picker and in the examples gallery automatically.
+- **A demo** is a component in `website/src/demos/`. Export it, then reference it
+  from a page with `<LiveDemo sourceId="your-demo" />`, which renders it live and
+  displays its own source underneath, so the example cannot drift.
+
+## Pull requests
+
+1. Fork the repository, or create a branch from `master`.
+2. Keep the change focused — a pull request that fixes one thing gets reviewed
+   faster than one that fixes five.
+3. Run the checks that apply:
+
+```bash
+npm run typecheck        # package
+npm run build            # package
+cd website && npm run lint && npm test && npm run build
+```
+
+4. Update the documentation when behaviour changes. The docs are part of the
+   product here, not an afterthought.
+5. Write a clear description: what changed, why, and how you verified it. A
+   before/after screen recording is worth a lot for animation changes.
+
+## Good first contributions
+
+Areas where a focused change helps most:
+
+- Cross-browser behaviour, especially Safari and Firefox recording paths.
+- Recording quality: codec selection, frame pacing, sharper text in clips.
+- Reveal timing and easing — the fill and label fade is the part people notice.
+- Tests: the package has no automated coverage yet.
+- Documentation: more recipes, clearer explanations, better examples.
+- New sample artwork that exercises a shape type the engine has not been tested on.
+
+## Reporting a bug
+
+Include the SVG markup (or a minimal version of it), the options you passed, the
+browser and version, and what you expected instead. For recording problems, say
+whether `canRecordVideo()` returned `true` — that narrows it down immediately.
+
+## Code style
+
+- **TypeScript**, strict, with `noUnusedLocals`, `noUnusedParameters` and
+  `erasableSyntaxOnly` enabled. No enums or namespaces in the library.
+- **Formatting** follows the repository's existing conventions: four spaces,
+  single quotes, semicolons in `src/`, and no unused exports.
+- **Comments** should explain the why, not the what. The trickiest parts of the
+  engine are the stroke synthesis and the reveal maths; keep those comments
+  accurate.
+- **Commits** describe the intent: `fix: keep gradients alive when revealing fills`.
+- **No new runtime dependencies** in the library without discussing it first.
+  The package's only runtime dependency is Vivus, and that is deliberate.
+
+## Next steps
+
+- [Introduction](/docs/introduction) — the problem space, if you are new here.
+- [How it works](/docs/how-it-works) — the pipeline your change will touch.
+- [Changelog](/docs/changelog) — how releases are described.

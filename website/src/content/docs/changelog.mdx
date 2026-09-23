@@ -1,0 +1,65 @@
+Releases of `@penwell/draw-on`, newest first. The published version is always
+available on [npm](https://www.npmjs.com/package/@penwell/draw-on), and this page
+is kept in step with the tags in the repository.
+
+<Callout type="note" title="How this page is maintained">
+Entries are added by hand when a version is published. If you are contributing a
+change that alters behaviour, add a line here in the same pull request — see
+[Contributing](/docs/contributing).
+</Callout>
+
+## 0.1.x
+
+| Version | Date | Notes |
+| --- | --- | --- |
+| `0.1.4` | 2026 | Current release. Package metadata, documentation and demo improvements. |
+| `0.1.3` | 2026 | Documentation and example updates. |
+| `0.1.2` | 2026 | Documentation and example updates. |
+| `0.1.1` | 2026 | Documentation and example updates. |
+| `0.1.0` | 2026 | First public release: `createDrawing`, `parseSvg`, `computeDims`, `useSketchDraw`, `SketchDraw`, WebM recording. |
+
+<Callout type="warning" title="Filling in the details">
+The per-release notes above summarise the public surface rather than the commit
+history — the repository is the source of truth for what changed when:
+
+```bash
+git log --oneline
+git tag --list 'draw-on-v*'
+```
+</Callout>
+
+## What each area covers
+
+| Area | First shipped | Documentation |
+| --- | --- | --- |
+| Progressive stroke animation | `0.1.0` | [createDrawing](/docs/api/create-drawing) |
+| Fill synthesis for fill-only shapes | `0.1.0` | [How it works](/docs/how-it-works) |
+| Fill and label reveal window | `0.1.0` | [DrawingOptions](/docs/api/drawing-options) |
+| Progress scrubbing | `0.1.0` | [Scrubbing and scroll](/docs/guides/scrubbing) |
+| React hook and component | `0.1.0` | [useSketchDraw](/docs/api/use-sketch-draw) |
+| Browser-side WebM recording | `0.1.0` | [Recording API](/docs/api/record) |
+| Documentation site | `0.1.4` | This website |
+
+## Versioning
+
+The package follows semantic versioning:
+
+- **Major** — a breaking change to the public API or to the recorded output.
+- **Minor** — new capability, backwards compatible: a new option, a new helper, a
+  new entry point.
+- **Patch** — fixes, documentation and performance work that does not change how
+  the API behaves.
+
+## Upgrading
+
+There are no breaking changes within `0.1.x`. If you are coming from Vivus
+directly, the [comparison page](/docs/vivus-comparison) has the mapping table, and
+the two behavioural differences to expect — fills drawing as outlines first, and
+labels fading in at the end — are both controlled by
+[`revealStart` and `revealMs`](/docs/api/drawing-options).
+
+## Next steps
+
+- [Introduction](/docs/introduction) — what the library does.
+- [Contributing](/docs/contributing) — how to get a change into a release.
+- [npm](https://www.npmjs.com/package/@penwell/draw-on) — published versions and downloads.

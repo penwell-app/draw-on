@@ -1,0 +1,156 @@
+`setProgress` is the most useful method in the package. It puts the animation at
+any point between 0 and 1, instantly, in either direction — which turns a draw-on
+into something a reader can control.
+
+---
+
+## Why it works both ways
+
+Progress drives two things, both of them stored state rather than a running
+animation: the dash offset on every stroke, and the reveal amount for fills and
+labels. Setting `0.4` after `0.9` simply renders `0.4`. Nothing has to be
+interrupted or reversed.
+
+```ts
+drawing.setProgress(0);      // blank
+drawing.setProgress(0.4);    // strokes part-drawn
+drawing.setProgress(0.9);    // strokes done, fills almost fully in
+drawing.setProgress(0.4);    // back again
+```
+
+<LiveDemo
+    title="Jump around the timeline"
+    description="Fifty percent, a quarter, back to the start — all with setProgress."
+    sourceId="scrubbing"
+    controls="none"
+    autoPlayWhenInView
+/>
+
+## A slider
+
+```tsx
+const [value, setValue] = useState(0);
+
+<input
+    type="range"
+    min={0}
+    max={1}
+    step={0.001}
+    value={value}
+    onChange={(event) => {
+        const next = Number(event.target.value);
+        setValue(next);
+        drawing.setProgress(next);
+    }}
+/>
+```
+
+Use a small step (`0.001`) for smooth dragging, and remember that each call is
+cheap — you can call it on every `input` event without debouncing.
+
+## Scroll-linked drawing
+
+The same idea with a different input. This demo scrolls internally so the page
+itself never jumps, but the maths is identical for a sticky full-page reveal:
+
+```ts
+const onScroll = () => {
+    const max = track.scrollHeight - track.clientHeight;
+    const fraction = max > 0 ? track.scrollTop / max : 0;
+    drawing.setProgress(fraction);
+};
+
+track.addEventListener('scroll', onScroll, { passive: true });
+```
+
+<LiveDemo
+    title="Scroll inside the panel"
+    description="scrollTop maps straight onto setProgress — forwards and backwards."
+    sourceId="scroll-scrub"
+    controls="none"
+    autoPlayWhenInView
+    height={420}
+/>
+
+For a full-page variant, put the SVG in a sticky container and read
+`window.scrollY` against the section's bounds:
+
+```ts
+const onScroll = () => {
+    const rect = section.getBoundingClientRect();
+    const travelled = Math.min(1, Math.max(0, -rect.top / (rect.height - window.innerHeight)));
+    drawing.setProgress(travelled);
+};
+
+window.addEventListener('scroll', onScroll, { passive: true });
+```
+
+<Callout type="tip" title="Keep the handler passive and cheap">
+A scroll handler runs a lot. Keep it to a subtraction and a division, as above,
+and let `setProgress` do the rest — that is what it is built for.
+</Callout>
+
+## Where the reveal happens
+
+Fills and labels only start appearing at `revealStart`, so a scroll-linked
+drawing finishes visually in the last stretch of the scroll:
+
+| Progress | Strokes | Fills and labels |
+| --- | --- | --- |
+| 0 → `revealStart` | Drawing on | Hidden |
+| `revealStart` → 1 | Finishing | Fading in proportionally |
+
+If you want the reveal spread across the whole scroll, lower `revealStart`:
+
+```ts
+createDrawing(svg, { revealStart: 0.3 });
+```
+
+The maths behind the fade is on [How it works](/docs/how-it-works).
+
+## A timeline or a tour
+
+Because progress is just a number, a sequence of steps is easy to express:
+
+```ts
+const steps = [
+    { at: 0, caption: 'An empty page' },
+    { at: 0.45, caption: 'The outline is drawn' },
+    { at: 0.8, caption: 'Shapes are filling in' },
+    { at: 1, caption: 'The finished diagram' },
+];
+
+function goToStep(index: number) {
+    const step = steps[index];
+    drawing.setProgress(step.at);
+    caption.textContent = step.caption;
+}
+```
+
+Pair it with `setInterval` for an automated tour, or with buttons for a
+presentation. Either way, no animation state has to be tracked by hand.
+
+## Animating from a running state
+
+If an animation is playing and you want to take manual control, stop it first.
+`setProgress` does not stop a running Vivus instance by itself.
+
+```ts
+drawing.stop();
+drawing.setProgress(0.5);
+```
+
+Compare that with `play()`, which hides the fills, runs the draw and reveals at
+the end.
+
+## Recording uses the same door
+
+`recordDrawToWebM` walks progress from 0 to 1 and captures each frame — the
+recording guide shows the whole flow. If scrubbing works in your app, recording
+works too, because they are the same call.
+
+## Next steps
+
+- [Recording to WebM](/docs/guides/recording) — turn the timeline into a video.
+- [createDrawing](/docs/api/create-drawing) — `play`, `stop`, `reset`, `hide`, `reveal`, `destroy`.
+- [DrawingOptions](/docs/api/drawing-options) — including `revealStart` and `revealMs`.

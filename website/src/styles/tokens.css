@@ -1,0 +1,87 @@
+/* Design tokens for the Draw-On docs site.
+   Palette, type and radii are lifted from draw-on.svg and demos/*\/src/styles.css
+   so the docs feel like the same product as the demos and the README. */
+
+:root {
+    --surface: #f5f0e5;
+    --surface-raised: #fbfaf7;
+    --card: #fffdf7;
+    --paper-grid: rgba(39, 36, 26, 0.045);
+
+    --text: #27241a;
+    --text-strong: #16150f;
+    --text-soft: #625d50;
+    --text-mute: #8d897d;
+
+    --line: rgba(39, 36, 26, 0.13);
+    --line-soft: rgba(39, 36, 26, 0.07);
+
+    --accent: #2f6a5c;
+    --accent-soft: #e7efe8;
+    --gold: #f4c95d;
+    --gold-soft: #fdf3d9;
+    --blue: #a8d8ea;
+    --mint: #7bc6a4;
+    --warn: #b4722b;
+    --danger: #a6402f;
+
+    --primary-bg: #27241a;
+    --primary-fg: #fffdf7;
+
+    --code-bg: #201e18;
+    --code-fg: #f6f2e8;
+    --code-chrome: rgba(255, 253, 247, 0.12);
+
+    --radius-lg: 24px;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --radius-pill: 999px;
+
+    --shadow-sm: 0 1px 5px rgba(39, 36, 26, 0.12);
+    --shadow: 0 16px 50px rgba(39, 36, 26, 0.07);
+    --shadow-lg: 0 26px 70px rgba(39, 36, 26, 0.14);
+
+    --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: urbanist, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+
+    --header-h: 62px;
+    --sidebar-w: 268px;
+    --toc-w: 208px;
+    --content-w: 768px;
+    --shell-w: 1400px;
+}
+
+[data-theme='dark'] {
+    --surface: #131210;
+    --surface-raised: #181712;
+    --card: #1d1b16;
+    --paper-grid: rgba(255, 253, 247, 0.05);
+
+    --text: #efece2;
+    --text-strong: #fffdf7;
+    --text-soft: #bdb7a8;
+    --text-mute: #8d897d;
+
+    --line: rgba(255, 253, 247, 0.14);
+    --line-soft: rgba(255, 253, 247, 0.07);
+
+    --accent: #8fd0b6;
+    --accent-soft: rgba(143, 208, 182, 0.14);
+    --gold: #f4c95d;
+    --gold-soft: rgba(244, 201, 93, 0.16);
+    --warn: #e0a961;
+    --danger: #f0907c;
+
+    --primary-bg: #f4efe2;
+    --primary-fg: #16150f;
+
+    --code-bg: #0f0e0a;
+    --code-fg: #f6f2e8;
+    --code-chrome: rgba(255, 253, 247, 0.14);
+
+    --shadow-sm: 0 1px 5px rgba(0, 0, 0, 0.4);
+    --shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 26px 70px rgba(0, 0, 0, 0.45);
+}

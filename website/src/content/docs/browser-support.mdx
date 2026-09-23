@@ -1,0 +1,104 @@
+Drawing works anywhere the DOM does. Recording needs a canvas capture path, which
+is why the two are listed separately.
+
+---
+
+## Drawing
+
+| Browser | Support | Notes |
+| --- | --- | --- |
+| Chrome / Edge (Chromium) | Full | Best all-round support, including recording |
+| Firefox | Full | Drawing and scrubbing behave the same; recording depends on the version |
+| Safari 15+ | Full | `getTotalLength()` and `dashoffset` animation are supported |
+| Mobile Safari (iOS 15+) | Full | Same engine; watch memory on large SVGs |
+| Chrome for Android | Full | Recording works |
+| Node / SSR / workers | None | There is no DOM: keep the animation client-side |
+
+What the drawing needs:
+
+| API | Used for |
+| --- | --- |
+| `DOMParser` | `parseSvg` |
+| `SVGPathElement.prototype.getTotalLength` | Vivus measuring stroke length |
+| `stroke-dashoffset` transitions | The stroke animation |
+| `getComputedStyle` | Reading fills and strokes declared in CSS |
+| `MediaRecorder` + `canvas.captureStream` | **Recording only** |
+
+## Recording
+
+```ts
+import { canRecordVideo } from '@penwell/draw-on/core';
+
+if (canRecordVideo()) {
+    // safe to show the export button
+}
+```
+
+| Browser | `MediaRecorder` | `canvas.captureStream` | WebM output |
+| --- | --- | --- | --- |
+| Chrome / Edge | Yes | Yes | VP9, VP8 or generic WebM |
+| Brave / Opera | Yes | Yes | Same as Chromium |
+| Firefox | Yes | Yes | WebM (VP8/VP9 depending on build) |
+| Safari | Partial | Partial | Not reliable — treat as unsupported |
+| Mobile Safari | Partial | Partial | Not reliable |
+| Chrome for Android | Yes | Yes | VP9 |
+| Older browsers | No | No | `canRecordVideo()` returns `false` |
+
+Always probe rather than sniff the user agent:
+
+```tsx
+const { canRecord, exportWebM } = useSketchDraw({ svgMarkup });
+
+{canRecord ? (
+    <button onClick={() => void exportWebM()}>Export WebM</button>
+) : (
+    <p>Recording is not available in this browser.</p>
+)}
+```
+
+## Format
+
+Output is always **WebM**:
+
+1. `video/webm;codecs=vp9` where supported
+2. `video/webm;codecs=vp8` as a fallback
+3. `video/webm` if neither codec is reported
+
+MP4 is not offered. `MediaRecorder` MP4 support is inconsistent enough that
+shipping it would mean promising output some browsers cannot produce. Transcode
+the WebM afterwards if you need MP4.
+
+## Progressive enhancement
+
+The library is small and the drawing path is cheap, but the opinionated approach
+is still worth it:
+
+1. Render the SVG in your markup as usual, so it works without JavaScript.
+2. On the client, call `createDrawing` and `play()`.
+3. Gate the recording button on `canRecordVideo()`.
+4. Respect `prefers-reduced-motion`, and jump to the finished state instead of
+   animating — see [Using with React](/docs/guides/react).
+
+```ts
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const drawing = createDrawing(svg, { duration: reduced ? 1 : 240 });
+drawing.play();
+```
+
+## Known constraints
+
+- **Memory** — recording rasterises every frame; an enormous SVG at a high `fps`
+  will use a lot of it. Keep the frame count in the low hundreds.
+- **Fonts in recorded frames** — external fonts may not be applied during
+  rasterisation. Inline them, or convert text to outlines.
+- **Filters and gradients** — supported, and rendered, but slower per frame.
+- **Ten thousand shapes** — Vivus measures each path individually. Drawing stays
+  responsive, but recording a document that large is best split into sections.
+- **`<use>` and `<symbol>`** — not matched by the selectors, so expand them to
+  real shapes first.
+
+## Next steps
+
+- [Recording API](/docs/api/record) — the options that shape the output.
+- [Troubleshooting](/docs/faq) — empty files, missing fonts, blank first frames.
+- [Recording to WebM](/docs/guides/recording) — values that look good in practice.

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="@penwell/draw-on - make any inline SVG draw itself. Progressive strokes, fill and label reveals, scrubbing, and browser-side WebM recording."
+        />
+        <meta name="theme-color" content="#f5f0e5" />
+        <meta property="og:title" content="Draw-On - make any inline SVG draw itself" />
+        <meta
+            property="og:description"
+            content="Documentation, live demos and playground for @penwell/draw-on: progressive SVG strokes, fill and label reveals, scrubbing and WebM recording."
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="/draw-on.svg" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <title>Draw-On - make any inline SVG draw itself</title>
+        <script>
+            // Apply the stored theme before React mounts so there is no flash of
+            // the wrong colour scheme. Kept in sync with src/lib/theme.ts.
+            (function () {
+                try {
+                    var stored = window.localStorage.getItem('draw-on-theme') || 'system';
+                    var dark =
+                        stored === 'dark' ||
+                        (stored === 'system' &&
+                            window.matchMedia('(prefers-color-scheme: dark)').matches);
+                    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+                } catch (error) {
+                    document.documentElement.dataset.theme = 'light';
+                }
+            })();
+        </script>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module" src="/src/main.tsx"></script>
+    </body>
+</html>

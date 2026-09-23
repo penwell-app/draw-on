@@ -1,0 +1,119 @@
+Excalidraw and tldraw produce exporter-ready SVG with a very particular
+character: rough, slightly wobbly outlines, filled shapes, and plenty of `<text>`
+labels grouped with them. That is close to the ideal input for Draw-On.
+
+---
+
+## Getting SVG out of the canvas
+
+Both tools expose the same shape of data: elements in, an SVG string out.
+
+```tsx
+import { exportToSvg } from '@excalidraw/excalidraw';
+
+const node = await exportToSvg({
+    elements,
+    appState: { exportBackground: false, viewBackgroundColor: 'transparent' },
+    files: null,
+});
+
+const svg = node.outerHTML;      // hand this to useSketchDraw
+setSvgMarkup(svg);
+```
+
+```ts
+// tldraw
+const svg = await editor.getSvgString(editor.getSelectedShapeIds(), {
+    background: false,
+    padding: 16,
+});
+
+setSvgMarkup(svg.svg);
+```
+
+Then the animation side is identical to every other recipe:
+
+```tsx
+const { containerRef, play } = useSketchDraw({
+    svgMarkup,
+    duration: 300,
+    type: 'delayed',       // hand-drawn shapes look best slightly staggered
+    revealStart: 0.55,
+});
+```
+
+<LiveDemo
+    title="Hand-drawn shapes"
+    description="Rough paths, filled boxes and labels — the Excalidraw look, animated."
+    sampleId="annotation"
+    controls="full"
+    autoPlayWhenInView
+/>
+
+## Why `delayed` suits hand-drawn art
+
+Excalidraw draws every shape twice (a rough outline plus a light second pass) and
+often with a slight rotation. Animating those strictly one after another looks
+mechanical, because a single logical shape is really two or three elements.
+
+`type: 'delayed'` starts the next shape before the previous one finishes:
+
+| Option | Effect on hand-drawn art |
+| --- | --- |
+| `'oneByOne'` | Strictly sequential; good for small sketches |
+| `'delayed'` | Overlapping strokes; the closest thing to a real hand |
+| `'sync'` | Everything at once; good for a fast flourish, bad for detail |
+
+## Groups, text and arrows
+
+- **Labels** — Excalidraw wraps text in a container `<text>` element, often with
+  the shape's fill behind it. Both are hidden and revealed together by the
+  reveal window, so a labelled box fills and labels in at the same moment.
+- **Arrows** — exported as paths with a `<marker>` arrowhead. The path animates;
+  the marker appears when the path does, which is exactly the intended effect.
+- **Groups** — Excalidraw uses `<g>` elements, which Draw-On does not split. The
+  animation follows document order, so if you want a group to draw as a unit,
+  reorder the elements in the export or animate the group yourself with two
+  drawing handles.
+- **Backgrounds** — export with `exportBackground: false` so the page background
+  is not part of the animation. Otherwise a giant filled rectangle draws first and
+  the effect is ruined.
+
+<Callout type="tip" title="Strip the background rect">
+Excalidraw can include a full-canvas `<rect>` even with the background set to
+transparent. Delete any shape whose `width`/`height` matches the `viewBox` before
+animating, or pass a `fill: 'none'` SVG.
+</Callout>
+
+## Frames around the art
+
+Excalidraw adds a padding rect and sometimes a `<style>` block for the hand-drawn
+font. Two consequences worth knowing:
+
+- A `<style>` block inside the SVG survives the `parseSvg` round trip, so the
+  rough font still renders during recording.
+- If the font is a webfont loaded by your page (not embedded in the SVG), inline
+  it before recording — see [Recording to WebM](/docs/guides/recording).
+
+## Interactive editors
+
+If you are animating inside a live canvas while the user is still editing, draw
+only when they are not:
+
+```tsx
+const { containerRef, play, drawing } = useSketchDraw({ svgMarkup, autoPlay: false });
+
+useEffect(() => {
+    if (isEditing) return;
+    play();
+}, [isEditing, play]);
+```
+
+Re-mounting on every keystroke would be wasteful; re-drawing when the edit
+settles is what a reader expects.
+
+## Next steps
+
+- [Figma, notebooks and handwriting](/docs/guides/figma-and-handwriting) — design exports and pen-style reveals.
+- [DrawingOptions](/docs/api/drawing-options) — `type`, `revealStart`, `strokeWidth`.
+- [Examples](/examples) — the annotation sample used above, ready to copy.

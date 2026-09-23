@@ -1,0 +1,132 @@
+`createDrawing` runs four steps, in order. Knowing them explains almost every
+question about how a particular SVG will behave.
+
+---
+
+## Step 1 — Give fill-only shapes something to draw
+
+Vivus walks paths like a pen: it needs a length. A `<rect>` with `fill="#f4c95d"`
+and no stroke has no visible length, so Draw-On gives it one.
+
+```ts
+svg.querySelectorAll(SHAPE_SELECTOR).forEach((el) => {
+    const stroke = el.getAttribute('stroke') || getComputedStyle(el).stroke;
+    const fill = el.getAttribute('fill') || getComputedStyle(el).fill;
+    if (!isPaint(stroke) && isPaint(fill)) {
+        el.setAttribute('stroke', strokeColor);
+        if (!el.getAttribute('stroke-width')) el.setAttribute('stroke-width', strokeWidth);
+    }
+});
+```
+
+- `SHAPE_SELECTOR` covers `path, rect, circle, ellipse, line, polyline, polygon`.
+- `isPaint` ignores `none`, `transparent`, empty strings and `rgba(0, 0, 0, 0)`,
+  so decorative shapes are left alone.
+- Shapes that already have a stroke keep it; the synthetic one is only applied
+  when a shape paints a fill and has no stroke of its own.
+
+The stroke colour and width come from the `stroke` and `strokeWidth` options,
+which default to the same ink the demos use: `#27241a` at `1.25`.
+
+## Step 2 — Hand everything to Vivus
+
+```ts
+const vivus = new Vivus(svg, {
+    type: opts.type ?? 'oneByOne',
+    duration: opts.duration ?? 220,
+    start: 'manual',
+    animTimingFunction: Vivus.EASE_OUT,
+});
+```
+
+Vivus rewrites every drawable shape into a `<path>`, sets a dash offset and
+animates it. `start: 'manual'` keeps it under Draw-On's control, and
+`Vivus.EASE_OUT` is the easing the finished look assumes.
+
+Because Vivus rewrites shapes, **the SVG you pass in is mutated in place**. If
+you need the original markup later (to re-render, diff or export), pass a clone:
+the `svgMarkup` string in React is the clone, which is why the hook can rebuild.
+
+## Step 3 — Hide what should not be visible yet
+
+```ts
+shapes.forEach((node) => node.setAttribute('fill-opacity', '0'));
+texts.forEach((node) => (node.style.opacity = '0'));
+```
+
+`shapes` is every shape that actually paints a fill, and their original
+`fill-opacity` is remembered in a `data-` attribute so it can be restored
+exactly. `texts` is `TEXT_SELECTOR`: `text`, `foreignObject` and `image`.
+
+## Step 4 — Reveal them during the final stretch
+
+The reveal is a function of progress, which is why scrubbing works in both
+directions:
+
+```ts
+const amount = Math.min(1, Math.max(0, (fraction - revealStart) / (1 - revealStart)));
+```
+
+| `setProgress(x)` | `revealStart` 0.6 → amount | What you see |
+| --- | --- | --- |
+| `0` | 0 | Blank: strokes have not started |
+| `0.3` | 0 | Strokes drawing, no fills or labels |
+| `0.6` | 0 | The reveal window opens exactly here |
+| `0.8` | 0.5 | Fills and labels half way in |
+| `1` | 1 | The finished artwork |
+
+`revealStart` is clamped to the range `0 … 0.999`, so there is always at least a
+sliver of drawing before the reveal begins. `revealMs` decides how long the CSS
+fade takes when `play()` finishes — scrubbing ignores it, because it drives
+opacity directly.
+
+<LiveDemo
+    title="One SVG, two reveal windows"
+    description="revealStart 0.2 against revealStart 0.8, with a shared scrubber."
+    sourceId="reveal-window"
+    controls="none"
+    autoPlayWhenInView
+    height={360}
+/>
+
+## The lifecycle of a drawing
+
+| Call | What it does |
+| --- | --- |
+| `drawing.play(onDone?)` | Hides fills and labels, draws the strokes, reveals at the end, then calls `onDone` |
+| `drawing.stop()` | Stops the frame loop where it is |
+| `drawing.reset()` | Rewinds the strokes to the undrawn state |
+| `drawing.hide()` / `drawing.reveal()` | Blank or restore fills and labels directly, with the CSS fade |
+| `drawing.setProgress(fraction)` | Jump anywhere; the reveal amount follows the formula above |
+| `drawing.destroy()` | Removes Vivus' internal listeners — call it when unmounting |
+
+A typical replay is therefore:
+
+```ts
+drawing.stop();
+drawing.reset();
+drawing.play();
+```
+
+## What about recording?
+
+`recordDrawToWebM` reuses all of the above: it steps `setProgress` from 0 to 1,
+rasterises the SVG onto a canvas at each step and feeds those frames to
+`MediaRecorder`. Nothing special happens inside the engine — recording is just a
+tight loop around `setProgress`, which is exactly why that method exists.
+
+## Where the seams are
+
+- **External stylesheets and fonts** may not rasterise during recording; inline
+  what matters. Covered in [Recording](/docs/guides/recording).
+- **CSS-driven fills** are read with `getComputedStyle`, so a fill injected by a
+  stylesheet still counts as painted — but the reveal writes to
+  `fill-opacity`, so shapes styled only via CSS keep their own opacity rules.
+- **Cloned markup** is cheap protection: one `parseSvg` call per animation keeps
+  the original string untouched.
+
+## Next steps
+
+- [DrawingOptions](/docs/api/drawing-options) — tune all six knobs with a live lab.
+- [Preparing your SVGs](/docs/guides/preparing-svgs) — what to inline, and what to avoid.
+- [Draw-On vs Vivus](/docs/vivus-comparison) — the honest comparison.

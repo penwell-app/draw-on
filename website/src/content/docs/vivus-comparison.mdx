@@ -1,0 +1,116 @@
+[Vivus](https://github.com/maxwellito/vivus) animates SVG strokes, and it does
+that extremely well. Draw-On builds directly on it — Vivus is a runtime dependency
+of this package — and adds the parts that real diagrams need.
+
+---
+
+## The same SVG, two engines
+
+Vivus walks the outline of each shape. Draw-On does the same, but first gives
+fill-only shapes an outline to walk, and holds the fills and labels back until
+the drawing is finished.
+
+<LiveDemo
+    title="Vivus on the left, Draw-On on the right"
+    description="Identical markup, identical duration. Only the right side hides and reveals."
+    sourceId="vivus-compare"
+    controls="none"
+    autoPlayWhenInView
+/>
+
+## What Draw-On adds
+
+| Capability | Vivus | Draw-On |
+| --- | --- | --- |
+| Animate stroke outlines | Yes | Yes, via Vivus |
+| `oneByOne` / `delayed` / `sync` ordering | Yes | Yes, same three |
+| Fill-only shapes participate in the draw | No | Adds a temporary stroke, then removes it |
+| Fills and labels hidden until the end | No | `hide()` / `reveal()` on every filled shape and text element |
+| Progress control for scrubbing | Frame callbacks are manual | `setProgress(0..1)`, in both directions |
+| Reveal window tuning | No | `revealStart` and `revealMs` |
+| Record to video in the browser | No | `recordDrawToWebM` (WebM, `MediaRecorder`) |
+| React hook and component | No | `useSketchDraw`, `SketchDraw` |
+| TypeScript types | Community `@types/vivus` | Included for both entry points |
+| Framework-agnostic core | Yes | Yes, `@penwell/draw-on/core` |
+
+## The three problems it solves
+
+**1. Filled shapes have no length to draw.** A `<rect fill="#f4c95d">` has no
+stroke, so a stroke animator has nothing to animate. Draw-On applies a stroke to
+shapes that paint a fill but no stroke, using `isPaint` to ignore `none`,
+`transparent` and `rgba(0, 0, 0, 0)`.
+
+**2. Text and images spoil the reveal.** Labels sitting on top of an empty diagram
+give the ending away. Draw-On hides `text`, `foreignObject` and `image` for the
+duration of the strokes and fades them back in.
+
+**3. There was no progress API.** Scrubbing, scroll-linked reveals and
+frame-accurate recording all need to jump to an arbitrary point. Draw-On exposes
+one number for all three: `setProgress(fraction)`.
+
+## Side by side in code
+
+```ts
+// Vivus
+const vivus = new Vivus('diagram', { duration: 220, type: 'oneByOne' });
+vivus.play();
+vivus.setFrameProgress(0.5);
+```
+
+```ts
+// Draw-On
+const svg = document.querySelector<SVGSVGElement>('#diagram')!;
+const drawing = createDrawing(svg, { duration: 220, type: 'oneByOne' });
+drawing.play();
+drawing.setProgress(0.5);
+```
+
+The shape of the API is deliberately familiar: same `duration` in frames, same
+three ordering strategies, same easing under the hood. What changes is that
+`setProgress` also drives the reveal, so a scrubber shows the finished state
+instead of half-drawn strokes under fully visible fills.
+
+## What Draw-On does not replace
+
+- **Vivus' own API.** If you need `Vivus.prototype.getStatus()`, SVG-injection
+  helpers or the `reverse()` option, use Vivus directly. Draw-On wraps a subset —
+  `play`, `stop`, `reset`, `destroy`, `setFrameProgress`.
+- **General SVG animation.** This is a draw-on effect, not a timeline engine. For
+  morphing, keyframes or physics, reach for GSAP, Motion or SMIL.
+- **Server-side rendering of the animation.** It is a DOM effect; there is nothing
+  to pre-render.
+
+## Choosing
+
+| Situation | Use |
+| --- | --- |
+| Pure line art, no fills or text | Vivus alone is enough |
+| Diagrams, notebooks, annotations, charts | Draw-On |
+| You need a scrubber, a scroll reveal or a video clip | Draw-On |
+| You need to keep the artwork byte-identical in the DOM | Neither — both mutate shapes into paths; animate a clone |
+| React app | Draw-On (`useSketchDraw`) |
+
+## Migration from Vivus
+
+Most Vivus setups map across directly:
+
+| Vivus | Draw-On |
+| --- | --- |
+| `new Vivus(id, opts)` | `createDrawing(svgElement, opts)` |
+| `vivus.play()` | `drawing.play(onDone?)` |
+| `vivus.stop()` | `drawing.stop()` |
+| `vivus.reset()` | `drawing.reset()` |
+| `vivus.setFrameProgress(f)` | `drawing.setProgress(f)` |
+| `vivus.destroy()` | `drawing.destroy()` |
+| — | `drawing.hide()` / `drawing.reveal()` |
+| — | `recordDrawToWebM(drawing.el, drawing.setProgress, opts)` |
+
+Two behavioural differences to expect after switching: filled shapes now draw as
+outlines before they fill, and text fades in at the end instead of being visible
+from the start. Both are controlled by `revealStart` and `revealMs`.
+
+## Next steps
+
+- [How it works](/docs/how-it-works) — the pipeline these additions sit in.
+- [DrawingOptions](/docs/api/drawing-options) — the reveal window, tuned live.
+- [Recording to WebM](/docs/guides/recording) — the capability Vivus does not have.

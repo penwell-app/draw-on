@@ -1,0 +1,132 @@
+Two families of artwork come up again and again with Draw-On: vector exports from
+design tools, and the "someone is writing on the page" look of notebooks and
+signatures. Both work with the same call.
+
+---
+
+## Figma and design-tool exports
+
+Export the frame as SVG (**Export → SVG**, with *Outline text* enabled if you want
+the most predictable result), then animate the string:
+
+```tsx
+const { containerRef, play, status } = useSketchDraw({
+    svgMarkup: exportedSvg,
+    duration: 260,
+    revealStart: 0.55,
+});
+```
+
+What to check in the exported file:
+
+| In the export | Why it matters here |
+| --- | --- |
+| `viewBox` present | Without it, `computeDims` falls back to the rendered size and the recorded clip can be the wrong shape |
+| Text converted to outlines, or fonts embedded | Text that depends on a page-level webfont may not rasterise during recording |
+| No giant background rect | A full-bleed `<rect>` draws first and hides everything else |
+| Clean `id`s | Filters and markers referenced with `url(#id)` must stay unique when several SVGs share a page |
+| Groups kept shallow | The animation follows document order; deeply nested groups draw in an order you may not expect |
+
+<Callout type="tip" title="Designers can help the animation">
+In a design tool, the layer order *is* the draw order. Asking for "the order
+someone would sketch this" — container first, then contents, then labels — gets
+you a better animation without touching any code.
+</Callout>
+
+<LiveDemo
+    title="A design-style diagram"
+    description="Rounded nodes, connector strokes and labels — the shape of a typical export."
+    sampleId="mindmap"
+    controls="full"
+    autoPlayWhenInView
+/>
+
+## Notebook pages
+
+Notebook artwork is the opposite problem: mostly **thin strokes**, with a
+highlight or two. Almost nothing needs the fill-synthesis step, and the reveal
+matters most for the highlighted blocks.
+
+```ts
+createDrawing(svg, {
+    duration: 320,
+    type: 'oneByOne',
+    revealStart: 0.6,
+    revealMs: 700,
+});
+```
+
+The result reads as if the page is being written out. That is exactly what
+Penwell does with Draw-On for its notebook output.
+
+<LiveDemo
+    title="A page of notes"
+    description="Ruled lines, handwriting, a checklist and a highlighted title block."
+    sampleId="notebook-page"
+    controls="full"
+    record
+    autoPlayWhenInView
+/>
+
+## Signatures and handwriting
+
+A signature is one long path, so it needs a slightly different treatment: the
+stroke should feel continuous and unhurried.
+
+```ts
+createDrawing(svg, {
+    duration: 200,
+    type: 'oneByOne',
+    revealStart: 0.999,   // nothing to fill: never open the reveal window
+});
+```
+
+Setting `revealStart` near the maximum (it is clamped at `0.999`) keeps the
+reveal from firing mid-signature when the artwork has decorative fills.
+
+<Callout type="note" title="Handwriting paths">
+Real handwriting is usually many short paths. Animating dozens of tiny strokes
+with `oneByOne` can look jittery — try `type: 'delayed'` so consecutive strokes
+overlap slightly, which reads much more like a moving pen.
+</Callout>
+
+## Drawing an SVG that is already on the page
+
+Notebooks and documents are often server-rendered or inlined by the bundler. There
+is no need to parse anything: animate the mounted element directly.
+
+```ts
+const svg = document.querySelector<SVGSVGElement>('.page-illustration')!;
+const drawing = createDrawing(svg, { duration: 300 });
+drawing.play();
+```
+
+See [Vanilla JS and TypeScript](/docs/guides/vanilla) for the full pattern,
+including teardown.
+
+## Re-rendering a changing page
+
+If the artwork changes while the user types (an annotation editor, a notebook
+being written), destroy the previous drawing before creating the next one:
+
+```ts
+function redraw(markup: string) {
+    drawing?.destroy();
+    host.replaceChildren();
+
+    const svg = parseSvg(markup);
+    host.appendChild(svg);
+
+    drawing = createDrawing(svg, { duration: 260 });
+    drawing.play();
+}
+```
+
+The same rule applies inside React: a new `svgMarkup` string re-mounts the
+drawing, and the hook cleans the old one up for you.
+
+## Next steps
+
+- [Preparing your SVGs](/docs/guides/preparing-svgs) — the checklist before you animate.
+- [Notebook and annotation samples](/examples) — paste-ready markup.
+- [Recording to WebM](/docs/guides/recording) — turning a reveal into a shareable clip.

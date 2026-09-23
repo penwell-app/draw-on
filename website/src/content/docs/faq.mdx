@@ -1,0 +1,165 @@
+Symptom first, cause second. Almost everything here traces back to the artwork
+or to the browser, not to the library.
+
+---
+
+## Nothing appears at all
+
+| Cause | Fix |
+| --- | --- |
+| The SVG is not in the document | Append it before `createDrawing` — detached elements measure as zero |
+| No `viewBox` and no layout size | Add a `viewBox`, or give the element a size in CSS |
+| `status: 'error'` from the hook | Read `error`: usually `InvalidSvgError`, meaning no `<svg>` root |
+| Zero-size container in React | The host div needs a width; check flex/grid rules that collapse it |
+| The markup is a URL, not markup | `parseSvg` needs the SVG *text*. Fetch the file first, or animate the mounted element |
+
+## Shapes appear instantly, without drawing
+
+Those shapes have a stroke of their own and a `stroke-dasharray` from somewhere
+else. The engine draws by animating dash offsets, so a pre-existing dash pattern
+fights it. Remove `stroke-dasharray` from the artwork, or expect the dashed look
+to animate as dashes.
+
+Another cause: the shapes sit inside a `<g>` with a transform that makes their
+length zero after flattening. Vivus measures `getTotalLength()` on the path it
+builds — check the artwork in the [playground](/playground).
+
+## Fills are visible before the strokes finish
+
+Check three things:
+
+1. `revealStart` — a low value reveals early by design. The default is `0.6`.
+2. The fill is applied by CSS that also sets `opacity` on a parent. The engine
+   writes `fill-opacity` on the shape itself; a parent `opacity` is not touched.
+3. The shape is a `<use>` referencing a `<symbol>`. `SHAPE_SELECTOR` does not
+   match `<use>`, so it is neither synthesised nor hidden. Expand `<use>` into
+   real shapes before animating.
+
+## Labels appear too early, or never
+
+- **Too early** — the labels are HTML rendered next to the SVG, not SVG text.
+  `TEXT_SELECTOR` covers `text`, `foreignObject` and `image` only. Use true SVG
+  text, or fade the HTML yourself.
+- **Never** — `revealStart` is at or near `0.999`. That is the intentional way to
+  suppress the reveal; lower it to `0.6` for the default behaviour.
+
+## Only some of the shapes draw
+
+- Elements outside `SHAPE_SELECTOR` (`path, rect, circle, ellipse, line,
+  polyline, polygon`) are not animated directly. `<use>`, `<g>` and `<image>` are
+  containers or labels, not drawable shapes.
+- Shapes with `fill="none"` **and** `stroke="none"` have nothing to draw.
+- A shape with `display: none` measures as zero length. Show it before animating.
+
+## The drawing is too fast or too slow
+
+`duration` is in frames, and the total is shared across every shape. A diagram
+with 40 shapes drawn at `duration: 220` gives each shape about five frames.
+
+```ts
+const shapes = svg.querySelectorAll(
+    'path, rect, circle, ellipse, line, polyline, polygon',
+).length;
+
+createDrawing(svg, { duration: Math.min(800, 120 + shapes * 12) });
+```
+
+<LiveDemo
+    title="Feel the difference a larger duration makes"
+    description="A dense diagram at 300 frames — the same value spread over every shape."
+    sampleId="flowchart"
+    options={{ duration: 300 }}
+    controls="full"
+    autoPlayWhenInView
+/>
+
+## Nothing in the recorded file
+
+| Cause | Fix |
+| --- | --- |
+| `MediaRecorder` missing | Gate the UI on `canRecordVideo()`; support varies by engine |
+| A blank background only | The SVG was detached, or its size was `0 × 0` at capture time |
+| Object URL revoked too early | `downloadBlob` waits a second; if you build your own URL, revoke it after the download starts |
+| Cross-origin `<image>` inside the SVG | Inline it as a data URI, or the canvas fails to draw |
+| The file will not play | It is WebM. Check it in a browser first, then transcode if you need MP4 |
+
+## Fonts look wrong in the recording
+
+The SVG is serialised and rasterised as an image for each frame, so fonts that
+come from your page (`@font-face`, Google Fonts, a CSS `font-family` that resolves
+to a network font) may not be applied in that snapshot.
+
+- Embed the font inside the SVG as a data URI, or
+- convert display type to outlines in the export, or
+- both, if the text matters.
+
+## `document is not defined`
+
+You are rendering on the server. Keep the animation client-side:
+
+```ts
+if (typeof document === 'undefined') return;   // or use 'use client' / ssr: false
+```
+
+`parseSvg` throws `InvalidSvgError('parseSvg requires a browser document.')` in
+that situation, and `useSketchDraw` reports it through `status: 'error'`.
+
+## `InvalidSvgError: No SVG to animate.`
+
+The string has no `<svg>` root. Common causes: an HTML fragment wrapped around the
+SVG, an error page returned instead of the file (check for `<!doctype html>`), a
+JSON envelope around the markup (parse the JSON first), or an empty string
+because the fetch failed.
+
+```ts
+const response = await fetch('/diagram.svg');
+const text = await response.text();
+console.log(text.slice(0, 120));   // confirm it really starts with <svg
+```
+
+## Two drawings interfere with each other
+
+Vivus rewrites shapes in place, so an element can only belong to one drawing.
+Parse the markup again for each:
+
+```ts
+const a = createDrawing(parseSvg(markup), { duration: 220 });
+const b = createDrawing(parseSvg(markup), { duration: 220 });
+```
+
+Related: duplicated `id` attributes across several SVGs on one page make filters
+and markers point at the wrong definition. Suffix ids per instance.
+
+## Replaying does not work
+
+`play()` hides the fills and starts the frame loop from wherever it is. If you
+stopped midway, rewind first:
+
+```ts
+drawing.stop();
+drawing.reset();
+drawing.play();
+```
+
+## The animation restarts twice in development
+
+React Strict Mode mounts, unmounts and mounts again. The hook destroys the first
+drawing in cleanup, so you may see a brief double start in dev only. It does not
+happen in a production build.
+
+## Recording is slow
+
+Each frame is a full SVG serialisation plus a canvas rasterisation. Budget roughly
+`fps × durationMs / 1000` frames and keep that number in the low hundreds. Filters,
+gradients, large images and a higher `fps` all multiply the cost. Suggested values
+are in [Recording to WebM](/docs/guides/recording).
+
+## Still stuck?
+
+- Try the artwork in the [playground](/playground), which reports engine errors
+  directly and lets you scrub the result.
+- Run through the markup checklist in
+  [Preparing your SVGs](/docs/guides/preparing-svgs).
+- Open an issue with the markup and the options you used:
+  [github.com/penwell-app/draw-on/issues](https://github.com/penwell-app/draw-on/issues).
+

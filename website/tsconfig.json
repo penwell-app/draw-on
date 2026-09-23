@@ -1,0 +1,31 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2023", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "jsx": "react-jsx",
+        "types": ["vite/client", "mdx", "vitest/globals", "node"],
+
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "erasableSyntaxOnly": true,
+
+        "resolveJsonModule": true,
+        "allowImportingTsExtensions": true,
+        "verbatimModuleSyntax": true,
+        "moduleDetection": "force",
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "isolatedModules": true,
+        "noEmit": true,
+
+        "paths": {
+            "@penwell/draw-on": ["../dist/index.d.ts"],
+            "@penwell/draw-on/core": ["../dist/core.d.ts"]
+        }
+    },
+    "include": ["src", "vite.config.ts", "vitest.config.ts"]
+}

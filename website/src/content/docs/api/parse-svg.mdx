@@ -1,0 +1,104 @@
+`parseSvg` turns a serialized SVG string into an element **owned by the current
+document**, ready to append and animate.
+
+<ApiSignature
+    signature={'parseSvg(markup: string): SVGSVGElement'}
+    entry="@penwell/draw-on/core"
+    returns="SVGSVGElement"
+    note="throws InvalidSvgError"
+/>
+
+## Example
+
+```ts
+import { createDrawing, parseSvg } from '@penwell/draw-on/core';
+
+const svg = parseSvg(markup);   // imported into the current document
+host.appendChild(svg);          // now it can be measured and drawn
+
+const drawing = createDrawing(svg, { duration: 240 });
+drawing.play();
+```
+
+## Why it exists
+
+Markup that comes from `fetch`, an API route, a template engine or a bundler is
+just a string. You cannot animate a string, and an element parsed by
+`DOMParser` lives in a *different* document — appending it directly across
+documents is not allowed.
+
+`parseSvg` does both halves: it parses the markup into a detached document, finds
+the `<svg>` root, and `importNode`s it into the current document so it can be
+appended.
+
+```ts
+const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+const found = doc.querySelector('svg');
+return document.importNode(found, true);
+```
+
+## InvalidSvgError
+
+The only error this function throws is `InvalidSvgError`, and only for two
+reasons:
+
+| Situation | Message |
+| --- | --- |
+| The markup has no `<svg>` element | `'No SVG to animate.'` |
+| There is no `document` to import into (SSR, a worker) | `'parseSvg requires a browser document.'` |
+
+```ts
+import { InvalidSvgError, parseSvg } from '@penwell/draw-on/core';
+
+try {
+    const svg = parseSvg(markup);
+    host.appendChild(svg);
+} catch (error) {
+    if (error instanceof InvalidSvgError) {
+        showFallbackImage();
+    } else {
+        throw error;
+    }
+}
+```
+
+`useSketchDraw` catches this for you and surfaces it through `status: 'error'` and
+the `error` message.
+
+## Sizing what you parsed
+
+```ts
+import { computeDims, parseSvg } from '@penwell/draw-on/core';
+
+const svg = parseSvg(markup);
+console.log(computeDims(svg));   // { width, height } — see computeDims
+```
+
+`computeDims` prefers the `viewBox`, so it gives a sensible size even before the
+element is laid out.
+
+## Notes
+
+<Callout type="note" title="It returns a copy">
+`importNode(found, true)` deep-clones the parsed subtree into your document, so
+the parsed document is discarded and the returned element is independent. Parsing
+the same string twice gives you two independent SVGs — which is exactly what you
+want when animating the same artwork in two places.
+</Callout>
+
+- **Inline SVG needs no parsing.** If the markup is already in your HTML, or you
+  rendered it with React, pass the element to `createDrawing` directly:
+  `document.querySelector('svg')`.
+- **Namespaces come along.** `importNode` preserves `xmlns`, `<defs>`, filters,
+  markers and embedded `<style>` blocks, so CSS inside the SVG keeps working.
+- **Do not animate the same element twice.** `createDrawing` mutates shapes into
+  paths; a second call on the same element will fight the first. Parse again for a
+  second drawing.
+- **Nothing happens until you append.** The engine measures paths with
+  `getTotalLength()`, which returns `0` for a detached element.
+
+## Next steps
+
+- [computeDims](/docs/api/compute-dims) — sizing parsed artwork for video.
+- [createDrawing](/docs/api/create-drawing) — the next step after parsing.
+- [Preparing your SVGs](/docs/guides/preparing-svgs) — what the markup needs to include.

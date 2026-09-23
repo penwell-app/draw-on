@@ -286,7 +286,7 @@ export default function App() {
           </p>
           <div className="hero-actions">
             <a className="button" href="https://www.npmjs.com/package/@penwell/draw-on" target="_blank" rel="noreferrer">npm</a>
-            <a className="button secondary" href="https://github.com/penwell/draw-on" target="_blank" rel="noreferrer">GitHub</a>
+            <a className="button secondary" href="https://github.com/penwell-app/draw-on" target="_blank" rel="noreferrer">GitHub</a>
           </div>
         </div>
       </header>

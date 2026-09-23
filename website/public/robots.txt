@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+# Only the site is crawlable; the demo media is fine to index too.

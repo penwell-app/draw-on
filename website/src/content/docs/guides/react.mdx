@@ -1,0 +1,193 @@
+The package ships two React entry points: a hook when you want to own the markup,
+and a component when you just want the drawing on screen.
+
+---
+
+## The hook
+
+```tsx
+import { useSketchDraw } from '@penwell/draw-on';
+
+const { containerRef, status, error, dimensions, play, setProgress, canRecord, exportWebM, drawing } =
+    useSketchDraw({
+        svgMarkup,
+        duration: 220,        // Vivus frames
+        type: 'oneByOne',
+        revealStart: 0.6,
+        autoPlay: true,       // default
+        maxWidth: 1280,       // caps reported dimensions
+        onDone: () => setDone(true),
+        onError: (error) => console.error(error),
+    });
+```
+
+`containerRef` is the only thing you must render — the hook does the parsing,
+mounting and lifecycle for you. Everything else is optional.
+
+<LiveDemo
+    title="Hook-driven drawing"
+    description="Play, scrub and export with the real hook. The source below is this exact component."
+    sourceId="react-hook"
+    controls="full"
+    autoPlayWhenInView
+/>
+
+## What the hook gives back
+
+| Member | Type | Notes |
+| --- | --- | --- |
+| `containerRef` | `RefObject<HTMLDivElement>` | Attach it to the element that should host the SVG |
+| `status` | `'idle' \| 'drawing' \| 'done' \| 'error'` | `'drawing'` is set while frames are running |
+| `error` | `string` | Empty unless parsing or drawing failed |
+| `dimensions` | `{ width, height }` | Intrinsic size of the parsed SVG, capped by `maxWidth` |
+| `play()` | `() => void` | Stops, resets and redraws |
+| `setProgress(fraction)` | `(fraction: number) => void` | Scrubs the mounted drawing |
+| `canRecord` | `boolean` | Result of `canRecordVideo()` — gate your export button on it |
+| `exportWebM(options?)` | `(options?) => Promise<Blob>` | Records and **re-reveals** the drawing when finished |
+| `drawing` | `Drawing \| null` | Escape hatch to the core handle; `null` until the SVG is mounted |
+
+<Callout type="note" title="What triggers a rebuild">
+The effect depends on `svgMarkup` only. Changing `duration`, `revealStart` or
+any other option on a later render will **not** rebuild the drawing — the values
+in use are the ones from the mount. Callbacks (`onDone`, `onError`) and `maxWidth`
+are read through refs, so they stay fresh without a rebuild.
+
+When you need live option changes, use the
+[core API](/docs/guides/vanilla) and rebuild deliberately, or key the component
+so React remounts it.
+</Callout>
+
+## The component
+
+`SketchDraw` renders the host element and lets a render prop place your own
+controls:
+
+```tsx
+import { SketchDraw } from '@penwell/draw-on';
+
+<SketchDraw svgMarkup={SVG} className="stage" duration={240}>
+    {({ play, setProgress, status }) => (
+        <>
+            <button onClick={play}>{status === 'drawing' ? 'Drawing…' : 'Replay'}</button>
+            <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.001}
+                onChange={(event) => setProgress(Number(event.target.value))}
+            />
+        </>
+    )}
+</SketchDraw>
+```
+
+<LiveDemo
+    title="SketchDraw with its own controls"
+    description="The component is unstyled on purpose: bring your own chrome."
+    sourceId="react-component"
+    controls="none"
+    autoPlayWhenInView
+/>
+
+<Callout type="warning" title="It renders a fragment">
+`SketchDraw` returns the container div *and* the render-prop output as siblings,
+so it needs a parent element. Wrap it in a `<div>` if your component returns it
+at the top level.
+</Callout>
+
+## Draw when it scrolls into view
+
+Autoplay on mount is often too eager: the drawing may be off screen. Watch the
+container instead and call `play()` when it appears.
+
+```tsx
+import { useSketchDraw } from '@penwell/draw-on';
+import { useEffect, useRef } from 'react';
+
+export function InViewDrawing({ svgMarkup }: { svgMarkup: string }) {
+    const { containerRef, play, status } = useSketchDraw({ svgMarkup, autoPlay: false });
+    const seen = useRef(false);
+
+    useEffect(() => {
+        const host = containerRef.current;
+        if (!host) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            for (const entry of entries) {
+                if (entry.isIntersecting && !seen.current) {
+                    seen.current = true;
+                    play();
+                }
+            }
+        }, { threshold: 0.5 });
+
+        observer.observe(host);
+        return () => observer.disconnect();
+    }, [containerRef, play]);
+
+    return <div ref={containerRef} data-status={status} />;
+}
+```
+
+<LiveDemo
+    title="Draw on intersection"
+    description="Scroll this demo out of view and back, or press Reset and wait."
+    sourceId="intersection"
+    controls="none"
+    autoPlayWhenInView
+/>
+
+## Respect reduced motion
+
+The library does not make this decision for you, so pick one of two stances:
+
+```tsx
+const reduced = useReducedMotion();   // your own hook, or window.matchMedia
+
+const { containerRef, play } = useSketchDraw({
+    svgMarkup,
+    autoPlay: !reduced,
+});
+
+useEffect(() => {
+    if (reduced) setProgress(1);   // show the finished artwork, skip the movement
+}, [reduced, setProgress]);
+```
+
+Jumping straight to `setProgress(1)` keeps the artwork on screen without any
+movement at all.
+
+## Next.js, Remix and other SSR frameworks
+
+There is no DOM on the server, so the animation must start on the client:
+
+- **Next.js App Router** — mark the wrapper `'use client'`. If the markup is
+  produced on the server, pass it down as a string prop; `parseSvg` runs on the
+  client inside the hook and is safe there.
+- **Next.js Pages Router** — `dynamic(() => import('./Diagram'), { ssr: false })`
+  is the simplest guarantee.
+- **Remix and other loaders** — the loader can return the SVG markup string, but
+  keep any import of `@penwell/draw-on` inside a client-only component so the
+  server bundle never touches `document`.
+- **Strict Mode** — the mount effect runs twice in development; the hook destroys
+  the first drawing in cleanup, so you may see a brief double start. That is
+  expected and does not happen in production builds.
+
+## Sizing
+
+The hook sets `max-width: 100%` and `height: auto` on the SVG, and reports the
+intrinsic size through `dimensions`. If your layout needs an exact aspect box,
+put the aspect ratio on the wrapper:
+
+```css
+.stage {
+    aspect-ratio: 16 / 9;
+}
+```
+
+## Where to go next
+
+- [useSketchDraw reference](/docs/api/use-sketch-draw) — every option and returned member.
+- [Scrubbing and scroll](/docs/guides/scrubbing) — turning progress into an interaction.
+- [Troubleshooting](/docs/faq) — status stuck on `error`, or nothing on screen.
+

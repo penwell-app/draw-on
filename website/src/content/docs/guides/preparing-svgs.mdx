@@ -1,0 +1,133 @@
+Most "it will not animate" problems come from the SVG, not from the library. This
+page is the checklist to run through before you file a bug.
+
+---
+
+## The five-minute checklist
+
+1. The root element is `<svg>` with an `xmlns` attribute.
+2. There is a `viewBox`, so the drawing has an intrinsic size.
+3. The SVG is **in the document** before `createDrawing` runs.
+4. Colours come from `fill` / `stroke` attributes, or from CSS that is already
+   loaded — not from an external stylesheet the SVG pulls in.
+5. `id`s are unique on the page if several SVGs share it.
+
+## viewBox and size
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="900" height="520">
+```
+
+`viewBox` is what `computeDims` prefers, and what keeps a recorded clip correctly
+proportioned. Without it, the fallback is the element's rendered size, which is
+`0` for anything not laid out yet.
+
+## Inline styles, or attributes
+
+Both work — the engine reads attributes first and falls back to
+`getComputedStyle`. What does **not** work reliably is an SVG that pulls its own
+stylesheet:
+
+```xml
+<!-- avoid: the stylesheet may not survive rasterisation during recording -->
+<?xml-stylesheet href="/styles/diagram.css" type="text/css"?>
+```
+
+<Callout type="tip" title="Prefer presentation attributes">
+`fill="#f4c95d"` and `stroke="#27241a"` travel with the markup: they survive
+serialisation, cloning and image rasterisation. CSS classes are convenient while
+you build, but inline the important values before recording.
+</Callout>
+
+## Fill-only shapes
+
+This is the case Draw-On exists for, and it works automatically:
+
+```xml
+<rect x="55" y="150" width="210" height="120" rx="22" fill="#f4c95d"/>
+```
+
+The engine gives that rect `stroke="#27241a"` and `stroke-width="1.25"` so it has
+an outline to draw, then reveals the fill. If a completely filled shape is *not*
+drawing, check that its fill is a real paint value — `none`, `transparent` and
+`rgba(0, 0, 0, 0)` are all treated as "nothing to draw" by design.
+
+## Filters, gradients and markers
+
+All supported, because animation happens on paths while the browser keeps
+rendering the effects:
+
+```xml
+<defs>
+    <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-opacity="0.12"/></filter>
+    <linearGradient id="sky"><stop offset="0" stop-color="#a8d8ea"/><stop offset="1" stop-color="#e7f4f9"/></linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+        <path d="M0 0 L12 6 L0 12 Z" fill="#27241a"/>
+    </marker>
+</defs>
+```
+
+Two caveats: filters and gradients make each recorded frame more expensive, and
+`id`s must be unique on the page — the same SVG included twice with `id="shadow"`
+will make both shapes use the first definition.
+
+## Text
+
+`<text>` is hidden during the strokes and revealed with the fills. Two rules keep
+it predictable:
+
+- Set `font-family` on the element or on a `<style>` **inside** the SVG. A font
+  that only exists in your page CSS may be missing from a recorded frame.
+- Prefer converting display type to outlines when the design is fixed. It renders
+  identically everywhere and survives recording without any font loading.
+
+## Accessibility
+
+The animation is decorative; the meaning should be available without it. A short
+`title`/`desc` pair plus `role="img"` covers most cases:
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" role="img" aria-labelledby="t d">
+    <title id="t">Request flow: browser to API to database</title>
+    <desc id="d">Three boxes joined by arrows, with a dashed return path.</desc>
+    ...
+</svg>
+```
+
+`<title>` and `<desc>` are not animated — they are never rendered — so they have
+no effect on the drawing.
+
+## Sanity-checking a file
+
+Before wiring up the animation, drop the markup into the
+[playground](/playground). It renders exactly what the engine will do, reports
+`InvalidSvgError` when the markup has no usable root, and lets you scrub through
+the result.
+
+```ts
+import { InvalidSvgError, parseSvg } from '@penwell/draw-on/core';
+
+try {
+    const svg = parseSvg(markup);
+} catch (error) {
+    if (error instanceof InvalidSvgError) {
+        // the markup had no <svg> root, or there was no document to import into
+    }
+}
+```
+
+## Optimising before you ship
+
+- **Strip editor metadata** — `data-*` attributes, comments and empty groups all
+  add weight without affecting the animation.
+- **Round coordinates** — `d="M95.3281 235.5"` becomes `d="M95 236"`; fewer bytes,
+  same picture.
+- **Remove the background rect** if it covers the whole canvas; it draws first
+  and delays everything else.
+- **Group what should move together** — the animation follows document order.
+
+## Next steps
+
+- [Troubleshooting](/docs/faq) — symptom-by-symptom fixes.
+- [Playground](/playground) — test any SVG against the real engine.
+- [Browser support](/docs/browser-support) — drawing versus recording.
