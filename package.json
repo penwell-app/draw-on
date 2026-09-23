@@ -60,7 +60,7 @@
         "type": "git",
         "url": "git+https://github.com/penwell-app/draw-on.git"
     },
-    "homepage": "https://github.com/penwell-app/draw-on#readme",
+    "homepage": "https://draw-on-nu.vercel.app/",
     "bugs": {
         "url": "https://github.com/penwell-app/draw-on/issues"
     },

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 const SITE_NAME = 'Draw-On';
-const SITE_URL = 'https://draw-on.vercel.app';
+const SITE_URL = 'https://draw-on-nu.vercel.app/';
 
 export interface DocumentMeta {
     title: string;

@@ -44,6 +44,8 @@ Originally created for [Penwell](https://usepenwell.com/) to animate Mermaid dia
 
 ## 📖 Documentation
 
+<a href="https://draw-on-nu.vercel.app/" target="blank"><strong>Documentation Production Website - https://draw-on-nu.vercel.app/</strong></a>
+
 The full documentation site lives in [`website/`](./website) and covers everything in this README in more depth, with live demos you can replay, scrub and record, and a playground for your own SVG.
 
 - **Start here** - [Introduction](https://github.com/penwell-app/draw-on/blob/master/website/src/content/docs/introduction.mdx), Installation, Quickstart, How it works
