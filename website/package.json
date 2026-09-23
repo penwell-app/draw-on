@@ -17,6 +17,7 @@
     "dependencies": {
         "@codemirror/lang-javascript": "^6.2.5",
         "@codemirror/theme-one-dark": "^6.1.2",
+        "@penwell/draw-on": "^0.1.4",
         "mermaid": "^12.0.0",
         "react": "^19.3.0",
         "react-dom": "^19.3.0",
