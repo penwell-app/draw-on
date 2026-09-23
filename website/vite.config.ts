@@ -28,9 +28,10 @@ export const drawOnAlias = {
  * find the monorepo root's React (18.x) instead of the site's (19.x) — two React
  * copies, and hook errors in the browser. Pin both to this package's copies.
  */
-export const reactAlias = {
+export const externalDepsAlias = {
     react: path.resolve(root, 'node_modules/react'),
     'react-dom': path.resolve(root, 'node_modules/react-dom'),
+    vivus: path.resolve(root, 'node_modules/vivus'),
 };
 
 const DOCS_DIR = path.resolve(root, 'src/content/docs');
@@ -93,7 +94,7 @@ export const mdxPlugin: PluginOption = {
 export default defineConfig({
     plugins: [mdxPlugin, headingsPlugin, react({ include: /\.(mdx|js|jsx|ts|tsx)$/ })],
     resolve: {
-        alias: { ...drawOnAlias, ...reactAlias },
+        alias: { ...drawOnAlias, ...externalDepsAlias },
         dedupe: ['react', 'react-dom'],
     },
     define: {

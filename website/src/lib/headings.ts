@@ -1,4 +1,4 @@
-import { slugify } from './slugify';
+import { slugify } from './slugify.ts';
 
 /** Headings collected at build time (or from raw markdown in tests). */
 export interface Heading {

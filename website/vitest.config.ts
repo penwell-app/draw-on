@@ -1,10 +1,10 @@
 import { defineConfig } from 'vitest/config';
-import { drawOnAlias, headingsPlugin, mdxPlugin, reactAlias } from './vite.config.ts';
+import { drawOnAlias, externalDepsAlias, headingsPlugin, mdxPlugin } from './vite.config.ts';
 
 export default defineConfig({
     plugins: [mdxPlugin, headingsPlugin],
     resolve: {
-        alias: { ...drawOnAlias, ...reactAlias },
+        alias: { ...drawOnAlias, ...externalDepsAlias },
         dedupe: ['react', 'react-dom'],
     },
     define: {
