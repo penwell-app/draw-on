@@ -17,9 +17,15 @@ const pkg = JSON.parse(fs.readFileSync(path.resolve(root, '../package.json'), 'u
 /**
  * The site imports the library straight from `../src` so the docs, the demos and
  * the playground always reflect the working tree instead of a published build.
+ *
+ * Order matters: these are prefix matches, so the subpath entries have to come
+ * before the bare specifier or `@penwell/draw-on/core` would resolve to the root
+ * entry. `/element` is separate because the root entry does not re-export it.
  */
 export const drawOnAlias = {
     '@penwell/draw-on/core': path.resolve(root, '../src/core/index.ts'),
+    '@penwell/draw-on/react': path.resolve(root, '../src/react/index.ts'),
+    '@penwell/draw-on/element': path.resolve(root, '../src/element/index.ts'),
     '@penwell/draw-on': path.resolve(root, '../src/index.ts'),
 };
 

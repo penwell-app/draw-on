@@ -1,0 +1,126 @@
+# `mount`, `loadSvg`, `sanitizeSvg`
+
+Getting an SVG into the page so there is something to draw, and making sure it is safe to draw.
+
+## `mount`
+
+```ts
+const drawing = await mount('#hero', '/logo.svg', { type: 'stagger' });
+```
+
+<ApiSignature
+    signature="mount(container: Element | string, source: string | SVGSVGElement, options?: MountOptions): Promise<DrawOnDrawing>"
+    returns="Promise<DrawOnDrawing>"
+    entry="@penwell/draw-on/core"
+/>
+
+It resolves `source` however you pass it, puts the SVG in the container, and hands back the drawing. `source` can be:
+
+| You pass | What happens |
+| --- | --- |
+| Markup starting with `<` | Parsed with `parseSvg` |
+| Anything else | Treated as a URL and fetched with `loadSvg` |
+| An `<svg>` element | Used as-is |
+
+<PropTable
+    columns={['Option', 'Type', 'Default', 'Description']}
+    rows={[
+        { name: 'replace', type: 'boolean', default: 'true', description: 'Replace the container contents instead of appending' },
+        { name: 'responsive', type: 'boolean', default: 'true', description: 'Set max-width 100% and height auto on the mounted SVG' },
+        { name: 'fetchInit', type: 'RequestInit', description: 'Forwarded to fetch when source is a URL' },
+    ]}
+/>
+
+Everything else is passed straight through to `draw()`, so `duration`, `reveal`, `pen` and the rest all work.
+
+### Two things to know
+
+**`responsive` writes styles directly.** `max-width: 100%` and `height: auto` are set as inline styles, not journalled, so `destroy()` does not undo them. Clear them yourself if the SVG leaves the page.
+
+**It is not cancellation-safe.** The container is replaced *before* the drawing is created, and there is no abort token. If two `mount()` calls race on the same container, the first one's SVG is discarded mid-flight. For cancellable loading use `useDrawOn` with `src`, which does abort.
+
+## `loadSvg`
+
+```ts
+const svg = await loadSvg('/logo.svg');
+const svg = await loadSvg('/logo.svg', { signal: controller.signal });
+```
+
+<ApiSignature signature="loadSvg(url: string, init?: RequestInit): Promise<SVGSVGElement>" returns="Promise<SVGSVGElement>" entry="@penwell/draw-on/core" />
+
+Fetches the URL and parses the result. A non-2xx response rejects with an `InvalidSvgError` naming the status:
+
+```
+Could not load SVG from /logo.svg (HTTP 404).
+```
+
+A network failure rejects with the raw `TypeError` that `fetch` threw, **not** an `InvalidSvgError`. If you are distinguishing the two, check for `TypeError` first.
+
+## `parseSvg`
+
+```ts
+const svg = parseSvg('<svg viewBox="0 0 10 10">...</svg>');
+document.body.appendChild(svg);
+```
+
+<ApiSignature signature="parseSvg(markup: string): SVGSVGElement" returns="SVGSVGElement" entry="@penwell/draw-on/core" />
+
+Parses markup into an element **owned by the current document**, so you can append it directly without importing a node.
+
+Two caveats:
+
+- **Parser errors are not surfaced.** Invalid SVG produces a `parsererror` document with no `svg` descendant, so you get the generic `InvalidSvgError: No SVG to animate.` rather than a message about what was wrong. If you need precise diagnostics, parse with the browser's own tooling first.
+- **It sanitises.** See below.
+
+## `sanitizeSvg`
+
+```ts
+const safe = sanitizeSvg(untrustedElement);
+```
+
+<ApiSignature signature="sanitizeSvg<T extends Element>(root: T): T" returns="T" entry="@penwell/draw-on/core" />
+
+Mutates in place and returns the same node. `parseSvg` calls it for you, so anything you parsed is already clean.
+
+It removes:
+
+- `script`, `iframe`, `object` and `embed` elements
+- `animate` and `set` elements that target `href` or `xlink:href`, or that touch an `on*` attribute
+- **every attribute starting with `on`**, which is all event handlers
+- `href` and `xlink:href` values beginning with `javascript:`, `vbscript:` or `data:text/html`
+
+Before testing a URL it strips whitespace and control characters, so `java&#9;script:` style obfuscation does not get through.
+
+### What it does not remove
+
+This is not a complete HTML sanitizer, and treating it as one would be a mistake. It does **not** strip:
+
+- `style` attributes or `<style>` elements, including `url(javascript:...)` inside a CSS value
+- `<foreignObject>` and the HTML inside it, apart from nested `<script>` caught by the tag query
+- `data:` URLs that are not `data:text/html`
+- `<link>`, `<meta>` or `<base>`
+- `formaction` or `srcdoc`
+
+If your SVG comes from an untrusted source and you are rendering it into a page, sanitise it yourself as well.
+
+## InvalidSvgError
+
+```ts
+import { InvalidSvgError } from '@penwell/draw-on/core';
+
+try {
+    const svg = parseSvg(markup);
+} catch (error) {
+    if (error instanceof InvalidSvgError) {
+        // no SVG in there, no document, or a failed load
+    }
+}
+```
+
+It is thrown by `parseSvg`, `loadSvg` and `draw`, in that last case for a missing target or a string that was really markup.
+
+## Next steps
+
+- [Sprites and `<use>`](/docs/v1/sprites) for what resolution does before measuring
+- [useDrawOn and `<DrawOn>`](/docs/api-v1/react) which handles loading and aborting for you
+- [Recording (1.0)](/docs/api-v1/record) for `computeDims`, the one helper from this page that lives there

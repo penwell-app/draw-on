@@ -1,0 +1,89 @@
+# Start here (1.0)
+
+1.0 is a rewrite of the engine, not a feature bump. Vivus is gone, timing is in milliseconds, and the handle you get back can pause, reverse, scrub by time and change speed while it plays.
+
+<Callout type="warning" title="Two versions live on this site">
+    Everything under **Draw-On 1.0** and **Draw-On 1.0 Reference** documents the current
+    release. The groups below them document 0.1.x, which still installs and still works.
+    If you are starting fresh, ignore those. If you are upgrading, read
+    [Migrating from 0.1.x](/docs/v1/migration) first.
+</Callout>
+
+## The smallest useful program
+
+```ts
+import { draw } from '@penwell/draw-on/core';
+
+const drawing = draw('#logo', { duration: 1800, type: 'stagger' });
+
+await drawing.play();
+```
+
+`draw()` takes an element, a wrapper containing one, or a selector. It reads the SVG's own stroke geometry, gives fill-only shapes a temporary outline so there is something to draw, then fades the fills and labels back in as the strokes finish.
+
+## What is new, in one place
+
+| Capability | Page |
+| --- | --- |
+| The timeline handle, events and stats | [draw()](/docs/api-v1/draw) |
+| Every option and its default | [DrawOptions](/docs/api-v1/draw-options) |
+| Tuned bundles for common artwork | [presets](/docs/api-v1/presets) |
+| The hook and the component | [useDrawOn and `<DrawOn>`](/docs/api-v1/react) |
+| A Web Component for non-React pages | [`<draw-on>`](/docs/api-v1/element) |
+| Stroke order and timing control | [Ordering and timing](/docs/v1/ordering) |
+| Easing, curves and per-stroke easing | [DrawOptions](/docs/api-v1/draw-options#ease) |
+| A nib that rides the stroke tip | [The pen nib](/docs/v1/pen) |
+| Hand-drawn wobble | [Hand-drawn mode](/docs/v1/sketchy) |
+| Icons built from `<symbol>` and `<use>` | [Sprites and `<use>`](/docs/v1/sprites) |
+| Scroll-linked drawing | [scrollScrub and inView](/docs/api-v1/scroll) |
+| Fetching an SVG and sanitising it | [mount and friends](/docs/api-v1/mount) |
+| WebM and PNG output | [Recording (1.0)](/docs/api-v1/record) |
+| A CSS-only file for a README | [toAnimatedSVG](/docs/api-v1/to-animated-svg) |
+
+## Pick a preset, then adjust it
+
+`presets` is five tuned bundles. Spread one and override whatever you disagree with, rather than starting from a blank options object.
+
+<LiveDemo
+    title="The five presets on identical artwork"
+    description="The only difference between these five stages is the preset object."
+    sourceId="presets"
+    wide
+/>
+
+```ts
+import { draw, presets } from '@penwell/draw-on/core';
+
+draw(svg, { ...presets.diagram, duration: 3000 });
+```
+
+## Take control of the handle
+
+The handle is the part that changed most. Every method below works while the animation is running.
+
+<LiveDemo
+    title="Playback controls, live speed and the event stream"
+    description="Play, pause, resume, reverse, restart, seek, change speed mid-flight, and watch the events arrive."
+    sourceId="engine-handle"
+    wide
+/>
+
+```ts
+const drawing = draw(svg, { duration: 3000 });
+
+const off = drawing.on('complete', () => console.log('done'));
+
+drawing.playbackRate = 2;   // speed it up without restarting
+drawing.seek(0.4);          // jump somewhere
+await drawing.reverse();    // undraw it
+off();                      // stop listening
+drawing.destroy();          // restore the SVG exactly as it was
+```
+
+## Two entry points you have not used yet
+
+**React.** `useDrawOn` takes triggers, so a drawing can start on mount, on scroll, on hover or on click, or be driven entirely by a slider.
+
+**Web Component.** `<draw-on>` means a page with no framework at all, or a CMS template, can animate an SVG from markup alone.
+
+Both are covered in the reference. If you came from 0.1.x, read [Migrating from 0.1.x](/docs/v1/migration) before anything else.

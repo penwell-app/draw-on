@@ -1,0 +1,79 @@
+# Installation (1.0)
+
+## Install
+
+```bash
+npm install @penwell/draw-on
+```
+
+1.0 has **no runtime dependencies**. The 0.1.x line depended on `vivus`; that is gone, so there is nothing else to install and nothing else to audit.
+
+## The four entry points
+
+| Specifier | What it gives you | Needs React |
+| --- | --- | --- |
+| `@penwell/draw-on` | Everything from `/core` and `/react` | Only if you use the React parts |
+| `@penwell/draw-on/core` | The engine, with no React at all | No |
+| `@penwell/draw-on/react` | `useDrawOn`, `<DrawOn>` | Yes |
+| `@penwell/draw-on/element` | `defineDrawOn` and the `<draw-on>` Web Component | No |
+
+Reach for `/core` in a plain page or a non-React framework. Reach for `/react` when you have React. Reach for `/element` when the SVG lives in markup you do not control.
+
+One thing to know before you are caught out by it: the root entry does **not** re-export the Web Component. `defineDrawOn` is only available from `@penwell/draw-on/element`.
+
+## Requirements
+
+- A browser with ES2020 support. The engine uses `requestAnimationFrame`, `PathGeometry.getPointAtLength` and CSS `stroke-dasharray` manipulation, all of which are long-standing.
+- `parseSvg` and `loadSvg` need a DOM, so they cannot run during server rendering. Guard them, or use the React entry point, which handles this for you.
+- Recording to WebM needs `MediaRecorder` and `canvas.captureStream`. Chromium browsers have both. `canRecordVideo()` tells you at runtime.
+- `recordFrames` only needs a canvas, so it works in more places than video capture does.
+
+## Verify the install
+
+```ts
+import { draw, DEFAULT_STROKE, SHAPE_SELECTOR } from '@penwell/draw-on/core';
+
+console.log(DEFAULT_STROKE);        // '#27241a'
+console.log(SHAPE_SELECTOR);        // 'path, rect, circle, ellipse, line, polyline, polygon'
+
+const drawing = draw('#logo');
+console.log(drawing.stats);         // { strokes, fills, texts, resolvedUses }
+console.log(drawing.duration);      // timeline length in ms
+```
+
+If `drawing.stats.strokes` is zero, the SVG has nothing drawable in it. The common causes are shapes hidden inside `<defs>`, `display: none`, or an SVG that is not in the document yet.
+
+## Bundler notes
+
+The package ships ESM and CommonJS with type declarations, so most bundlers need no configuration. Two things can trip it up:
+
+- If your bundler resolves `browser` fields or `exports` conditions, make sure the `/core`, `/react` and `/element` subpaths are allowed. They are declared in `exports`.
+- Tree shaking works. The package is marked `sideEffects: false`.
+
+## TypeScript
+
+Types ship with the package. The one naming trap worth repeating here: `Drawing` is the deprecated 0.1.x interface. The 1.0 handle is `DrawOnDrawing`.
+
+```ts
+import type { DrawOnDrawing, DrawOptions } from '@penwell/draw-on/core';
+```
+
+## Without a bundler
+
+1.0 is plain ES modules, so a script tag works if your bundler is not in the picture. Build the package first, then point at the ESM file:
+
+```html
+<script type="module">
+    import { draw } from './node_modules/@penwell/draw-on/dist/index.js';
+
+    draw('#logo', { duration: 1800 });
+</script>
+```
+
+For a page that is mostly static markup, the Web Component is the shortest route and needs no build step at all. See [`<draw-on>`](/docs/api-v1/element).
+
+## Next steps
+
+- [Quickstart (1.0)](/docs/v1/quickstart)
+- [Migrating from 0.1.x](/docs/v1/migration)
+- [Browser support](/docs/browser-support) for the older engines, which is still the right page for compatibility questions

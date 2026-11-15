@@ -1,0 +1,82 @@
+# `presets`
+
+Five tuned bundles for the artwork people actually animate. Each is a plain object, so spread one and override whatever you disagree with.
+
+<ApiSignature
+    signature="presets: Record<PresetName, DrawOptions>"
+    entry="@penwell/draw-on/core"
+/>
+
+## Using one
+
+```ts
+import { draw, presets } from '@penwell/draw-on/core';
+
+draw(svg, presets.signature);
+
+// or adjusted
+draw(svg, { ...presets.diagram, duration: 3000, delay: 150 });
+```
+
+`PresetName` is `keyof typeof presets`, so a custom name union is available if you want to build a selector around it.
+
+<LiveDemo
+    title="All five on identical artwork"
+    description="The same SVG five times. The only difference is the preset object."
+    sourceId="presets"
+    wide
+/>
+
+## What each one sets
+
+| Preset | For | Configuration |
+| --- | --- | --- |
+| `diagram` | Mermaid, Excalidraw, draw.io | `oneByOne` over 3200ms, `reveal: 'stroke'`, `ease: 'easeInOut'` |
+| `icon` | Icon sets | `sync` over 900ms, `reveal: 'none'`, `ease: 'easeOutCubic'` |
+| `logo` | Logos and wordmarks | `stagger` with a 90ms gap over 2200ms, `easeInOut`, `revealStart: 0.7` |
+| `signature` | Signatures and handwriting | `speed` at 700 units per second, `pen: true`, `reveal: 'none'` |
+| `sketch` | Whiteboard look | `oneByOne` over 3500ms, `sketchy: true`, `text: 'type'`, `reveal: 'stroke'` |
+
+## Why these particular values
+
+**`diagram` fills each box as its outline closes.** `reveal: 'stroke'` is the important part. With the default `reveal: 'end'`, every fill in a flowchart arrives at the same moment at the end, which reads as a single flash. With `reveal: 'stroke'`, each box fills the moment its own border finishes, so you can follow the diagram as it builds.
+
+**`icon` turns fill reveal off entirely.** Icon sets are strokes. Nothing needs hiding and nothing needs fading in, so `reveal: 'none'` skips work rather than adding a fade nobody asked for. `sync` draws all the strokes at once, which suits artwork that is one coherent mark rather than a sequence.
+
+**`logo` staggers.** Most logos are built from separate strokes that should feel like they were placed in turn rather than drawn simultaneously. The 90ms gap reads as deliberate, and `revealStart: 0.7` holds the fills back long enough for the strokes to finish first.
+
+**`signature` trades duration for realism.** A signature has no natural total length, so `type: 'speed'` is the only ordering that makes sense: constant pen speed regardless of how long each stroke is. `ease` is linear and `strokeEase` is `easeInOut`, which keeps the hand moving evenly but lets each stroke land softly.
+
+**`sketch` pairs wobble with typed labels.** `text: 'type'` suits handwriting, because a hand-drawn line and a label that fades in cleanly read as two different systems.
+
+## What they deliberately leave alone
+
+None of the presets set `stroke` or `strokeWidth`. The default ink colour `#27241a` is right for most artwork and wrong for a page with its own palette, so leave it to your markup and pass `stroke` yourself when you need to:
+
+```ts
+draw(svg, { ...presets.logo, stroke: '#2f6a5c' });
+```
+
+None of them set `text`, except `sketch`. And note that `icon` and `signature` both set `reveal: 'none'` while `text` keeps its `'fade'` default, so labels in those two presets still fade using `revealStart`. That is usually what you want, but it is worth knowing if you expected no reveal at all.
+
+## Building your own
+
+A preset is nothing more than an object satisfying `DrawOptions`, so your own is just another object:
+
+```ts
+const banner = {
+    type: 'stagger' as const,
+    stagger: 60,
+    duration: 1800,
+    reveal: 'stroke' as const,
+    text: 'none' as const,
+};
+
+draw(svg, banner);
+```
+
+## Next steps
+
+- [DrawOptions](/docs/api-v1/draw-options) for what each setting does
+- [Ordering and timing](/docs/v1/ordering) for `stagger` and `speed` in detail
+- [The pen nib](/docs/v1/pen) for the `signature` configuration

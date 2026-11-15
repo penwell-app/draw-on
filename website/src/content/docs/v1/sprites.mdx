@@ -1,0 +1,79 @@
+# Sprites and `<use>`
+
+An SVG built from `<symbol>` and `<use>` renders fine in a browser and shows nothing at all under 0.1.x, because the shapes are templates rather than geometry until they are instantiated. 1.0 resolves every rendered `<use>` into an inline clone before measuring anything, so sprite sheets and icon systems now draw.
+
+<LiveDemo
+    title="Local symbols, page-level symbols and a skipped element"
+    description="Four icons draw. The fifth carries data-draw-skip and never moves. Two of the icons come from a defs block elsewhere on this page."
+    sourceId="symbol-sprite"
+    wide
+/>
+
+## How resolution works
+
+For every `<use>` that is actually rendered, the engine:
+
+1. Reads `href` or `xlink:href` and requires it to be a same-document fragment.
+2. Finds the target, first inside the SVG and then, failing that, anywhere in the document by id.
+3. Replaces the `<use>` with a `<g>`, copying across every attribute except `x`, `y`, `width`, `height`, `href` and `transform`, and folding `x` and `y` into a translate.
+4. Clones the target's children in. For a `<symbol>` or nested `<svg>`, its `viewBox` and `preserveAspectRatio` are turned into a transform so the instance is scaled into the `width` and `height` you asked for.
+5. Repeats until nothing is left to resolve, up to 8 passes.
+
+That last step is what makes nesting work. A `<symbol>` that itself contains a `<use>` is skipped on the first pass because it sits inside `<defs>`, gets cloned in by the pass that resolves the outer reference, and is resolved on the next pass.
+
+`stats.resolvedUses` reports how many were resolved, so an empty value means the lookups failed.
+
+## Symbols defined elsewhere on the page
+
+Because the lookup falls back to `getElementById` on the whole document, one sprite sheet can serve many SVGs:
+
+```html
+<!-- Once, anywhere on the page -->
+<svg aria-hidden="true" style="position:absolute;width:0;height:0">
+  <defs>
+    <symbol id="icon-check" viewBox="0 0 24 24">
+      <path d="M4 12.5 L9.5 18 L20 6" fill="none" stroke="currentColor" stroke-width="3" />
+    </symbol>
+  </defs>
+</svg>
+
+<!-- Then in every SVG that needs it -->
+<svg viewBox="0 0 48 48">
+  <use href="#icon-check" x="12" y="12" width="24" height="24" />
+</svg>
+```
+
+Always give each `<use>` an explicit `width` and `height` when the symbol has a `viewBox`. Without them there is no box to scale the viewBox into and the content renders at its natural size, often far too large.
+
+## What is skipped, and what warns
+
+The engine skips any `<use>` inside `<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<marker>`, `<pattern>`, a gradient or a filter, because those are templates. Those are picked up later when something references them.
+
+Four situations produce a development warning instead of a silent failure:
+
+- `href` is not a fragment, so it points at another document
+- the target id does not exist
+- the `<use>` references itself, directly or through an ancestor
+- nothing drawable was found at all
+
+Warnings are prefixed `[draw-on]` and are stripped from production builds by the `NODE_ENV` check in the source. If you ship an unbundled copy straight to a browser, treat them as always on.
+
+## `data-draw-skip` on a `<use>`
+
+The skip attribute is copied onto the replacement `<g>`, so it covers everything the reference expands to, including nested symbols:
+
+```html
+<use href="#brand-mark" data-draw-skip="" />
+```
+
+That element stays visible from the first frame and is left out of `stats`.
+
+## Exporting the same way
+
+`toAnimatedSVG()` runs the same resolution before baking CSS keyframes, and strips the `data-draw-on-use` bookkeeping attributes from the output. The exported file is self-contained: the sprite definitions are inlined, so it does not depend on the original document. See [toAnimatedSVG](/docs/api-v1/to-animated-svg).
+
+## Next steps
+
+- [Ordering and timing](/docs/v1/ordering#taking-control-per-element) for `data-draw-order` and `data-draw-skip`
+- [presets](/docs/api-v1/presets), where the `icon` preset is tuned for exactly this kind of artwork
+- [The pen nib](/docs/v1/pen) for animating sprite icons with a nib attached

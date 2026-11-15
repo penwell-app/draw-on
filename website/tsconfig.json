@@ -24,7 +24,9 @@
 
         "paths": {
             "@penwell/draw-on": ["../dist/index.d.ts"],
-            "@penwell/draw-on/core": ["../dist/core.d.ts"]
+            "@penwell/draw-on/core": ["../dist/core.d.ts"],
+            "@penwell/draw-on/react": ["../dist/react.d.ts"],
+            "@penwell/draw-on/element": ["../dist/element.d.ts"]
         }
     },
     "include": ["src", "vite.config.ts", "vitest.config.ts"]

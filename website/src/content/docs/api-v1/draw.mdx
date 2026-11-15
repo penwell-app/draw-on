@@ -1,0 +1,139 @@
+# `draw()`
+
+The engine entry point. Takes an inline SVG, reads its geometry, and returns a handle you can play, pause, scrub, reverse and destroy.
+
+<ApiSignature
+    signature="draw(target: SVGSVGElement | Element | string, options?: DrawOptions): DrawOnDrawing"
+    returns="DrawOnDrawing"
+    entry="@penwell/draw-on/core"
+/>
+
+## Resolving the target
+
+`draw()` is forgiving about what you hand it:
+
+| You pass | What happens |
+| --- | --- |
+| An `<svg>` element | Used directly |
+| Any other element | Its first `<svg>` descendant is used |
+| A selector string | `document.querySelector` decides, then the rule above applies |
+
+Passing raw markup throws, with a message pointing at `mount()`. That is deliberate: markup has to be parsed into a document-owned element first, and guessing which the caller meant is how you end up appending two copies.
+
+`draw()` also throws if there is no `document`, which is what you will hit during server rendering.
+
+## The handle
+
+```ts
+const drawing = draw('#logo', { duration: 1800 });
+
+drawing.duration;      // 1800, the timeline length in ms
+drawing.playing;       // false
+drawing.progress;      // 0
+drawing.playbackRate;  // 1
+drawing.stats;         // { strokes, fills, texts, resolvedUses }
+```
+
+| Member | Type | Notes |
+| --- | --- | --- |
+| `el` | `SVGSVGElement` | The resolved SVG. Read-only |
+| `duration` | `number` | Timeline length in ms at rate 1 |
+| `progress` | `number` | Reading gives the position; **assigning seeks** |
+| `playing` | `boolean` | True while a frame loop is live |
+| `playbackRate` | `number` | Change it mid-flight. Clamped to a minimum of 0.01 |
+| `stats` | `DrawStats` | A snapshot taken at construction, not a live count |
+
+### Methods
+
+| Method | Returns | What it does |
+| --- | --- | --- |
+| `play()` | `Promise<boolean>` | Draw forward from the current position |
+| `resume()` | `Promise<boolean>` | Continue in whatever direction you were going |
+| `reverse()` | `Promise<boolean>` | Undraw back to the start |
+| `restart()` | `Promise<boolean>` | Rewind to 0 and play |
+| `pause()` | `void` | Stop where you are |
+| `seek(fraction)` | `void` | Jump to a position without changing play state |
+| `seekTime(ms)` | `void` | The same, in milliseconds |
+| `setProgress(fraction)` | `void` | An alias of `seek`, kept for recording |
+| `reset()` | `void` | Pause and rewind to blank |
+| `on(event, handler)` | `() => void` | Subscribe. Returns the unsubscribe |
+| `destroy()` | `void` | Stop and put the SVG back exactly as it was |
+
+### The promise resolves to a boolean, not nothing
+
+This is the detail worth internalising. Every long-running method resolves `true` when the timeline reached its end, and `false` when something interrupted it.
+
+Starting a second run resolves the first promise with `false`. So this is safe:
+
+```ts
+let finished = false;
+
+drawing.play().then((ok) => { finished = ok; });
+// user hits Replay mid-draw:
+// the promise above resolves false, and the new run owns the timeline
+```
+
+It also means you never get a promise that hangs forever waiting for an animation you have already abandoned.
+
+<LiveDemo
+    title="Every playback method, on one drawing"
+    description="The log shows the promises resolving, including the interruption that happens when you press Play twice."
+    sourceId="engine-handle"
+    wide
+/>
+
+## Events
+
+```ts
+const off = drawing.on('complete', (progress) => console.log(progress));
+off();
+```
+
+| Event | Fires |
+| --- | --- |
+| `start` | A run begins from the very beginning |
+| `progress` | At the end of **every** render, including every seek |
+| `pause` | `pause()` was called, and the drawing was playing |
+| `complete` | The timeline reached its end |
+
+`on()` returns the unsubscribe. Keep it, because handlers are not removed for you and `destroy()` clears the set without it mattering either way.
+
+`progress` fires on seeks as well as on animation frames, which is what makes it useful for a scrubber: one subscription covers both.
+
+Three of these are also available as options, `onStart`, `onProgress` and `onComplete`. Those are not event names, they are direct function properties, and there is no option for `pause`.
+
+## `stats`
+
+```ts
+drawing.stats;
+// { strokes: 12, fills: 5, texts: 3, resolvedUses: 0 }
+```
+
+| Field | Counts |
+| --- | --- |
+| `strokes` | Drawable shapes, after outlines were added to fill-only ones |
+| `fills` | Elements whose fill actually paints something |
+| `texts` | Outermost `text`, `foreignObject` and `image` nodes |
+| `resolvedUses` | `<use>` elements that were inlined |
+
+`strokes: 0` is the signal that nothing is drawable. The usual causes are shapes inside `<defs>`, `display: none`, an SVG that is not in the document, or `data-draw-skip` on everything.
+
+This is a snapshot fixed at construction. It does not update as the animation runs.
+
+## `destroy()` restores the element
+
+Every mutation the engine makes is journalled: dash arrays, opacity, the synthetic outlines, the shapes `sketchy` replaced, even the pen nib. `destroy()` replays that journal backwards.
+
+Two things follow from it. The original markup is not corrupted, so you can `draw()` the same element again afterwards. And cloning the SVG before passing it in, which the 0.1.x docs told you to do, is no longer necessary.
+
+It is idempotent, and calling it while a run is in flight resolves that run's promise with `false`.
+
+## Server rendering
+
+`draw()` needs a DOM. Call it in an effect, or use [`useDrawOn`](/docs/api-v1/react), which already does that.
+
+## Next steps
+
+- [DrawOptions](/docs/api-v1/draw-options) for every option and default
+- [toAnimatedSVG](/docs/api-v1/to-animated-svg) for a file with no JavaScript in it
+- [scrollScrub and inView](/docs/api-v1/scroll) for tying progress to the page

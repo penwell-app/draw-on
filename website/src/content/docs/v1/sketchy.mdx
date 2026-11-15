@@ -1,0 +1,87 @@
+# Hand-drawn mode
+
+`sketchy` resamples every shape along its outline and jitters the sample points, so a clean circle becomes something a person drew once. It is deterministic: the same seed always produces the same wobble.
+
+<LiveDemo
+    title="Clean artwork beside wobbled artwork"
+    description="Change the seed and the wobble changes. Change it back and the first wobble returns."
+    sourceId="sketchy-mode"
+    wide
+/>
+
+## Turning it on
+
+```ts
+draw(svg, { sketchy: true });
+```
+
+With no options you get roughness 1.2, seed 1 and a sampling step of 6 user units.
+
+## The three knobs
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `roughness` | `1.2` | Maximum jitter, in SVG user units |
+| `seed` | `1` | Seed for the wobble. Same seed, same result, every time |
+| `step` | `6` | Spacing between samples along the outline, in user units |
+
+```ts
+draw(svg, {
+    sketchy: {
+        roughness: 2.4,
+        seed: 7,
+        step: 4,
+    },
+});
+```
+
+`roughness` is a maximum, not a constant. Jitter is random per sample within that bound, so raising it produces a line that wanders rather than one that is uniformly offset.
+
+`step` controls how finely the outline is followed. Lower values follow curves more faithfully and produce longer path data; higher values are cheaper and visibly polygonal on tight arcs. Each shape gets at least 8 samples regardless, so a very large `step` still rounds small geometry reasonably.
+
+## What it does to the DOM
+
+This is the part that surprises people.
+
+Shapes other than `<path>` are **replaced**, not modified. A `<circle>`, `<rect>`, `<ellipse>`, `<line>`, `<polyline>` or `<polygon>` is removed and a new `<path>` takes its place, carrying across the paint attributes but none of the geometry attributes, since those no longer mean anything.
+
+Every one of those replacements is journalled, so `destroy()` puts the original elements back. You do not need to clone the markup before calling `draw()`.
+
+Paths with more than one subpath are skipped entirely, because a single jitter run cannot preserve the intent of a disconnected `d`. So is anything carrying `data-draw-skip` or sitting inside `<defs>`.
+
+## The sketch preset
+
+```ts
+import { presets } from '@penwell/draw-on/core';
+
+draw(svg, presets.sketch);
+```
+
+That preset pairs `sketchy` with `text: 'type'`, so the wobbling strokes draw on and then the labels type themselves out. It is the whiteboard look.
+
+## Combining it with a pen
+
+A wobbly stroke and a perfectly round nib look wrong together, so if you are using both, shrink the nib:
+
+```ts
+draw(svg, {
+    sketchy: { roughness: 1.8 },
+    pen: { radius: 2 },
+    type: 'speed',
+    strokeEase: 'easeInOut',
+});
+```
+
+## Watch out for
+
+**Text is untouched.** `sketchy` reshapes geometry, not glyphs. Labels still fade or type in cleanly, which reads as deliberate rather than broken.
+
+**Gradients survive.** Fill attributes are carried to the replacement path, so `fill: url(#gradient)` still resolves.
+
+**The first point moves too.** Corners are not pinned. A rectangle becomes a shape whose corners sit slightly off the original position. If you need exact alignment, leave those shapes out of the drawing with `data-draw-skip`.
+
+## Next steps
+
+- [The pen nib](/docs/v1/pen)
+- [presets](/docs/api-v1/presets) for the tuned combinations
+- [Preparing your SVGs](/docs/guides/preparing-svgs) for the markup that wobbles well

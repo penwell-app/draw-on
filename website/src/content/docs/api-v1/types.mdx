@@ -1,0 +1,255 @@
+# Type reference (1.0)
+
+Every type the package exports, where it lives, and the one naming trap that catches people on their first upgrade.
+
+<Callout type="warning" title="Drawing is the old one">
+    `@penwell/draw-on/core` exports **two** interfaces and the obvious name is the
+    deprecated 0.1.x shape. The 1.0 handle is `DrawOnDrawing`. Import the one you mean.
+</Callout>
+
+```ts
+import type { DrawOnDrawing, Drawing } from '@penwell/draw-on/core';
+//                    the 1.0 handle     the 0.1.x handle
+```
+
+## Where the types live
+
+| Entry point | Types |
+| --- | --- |
+| `@penwell/draw-on` | Everything from `/core` and `/react` |
+| `@penwell/draw-on/core` | Engine types, `draw()` |
+| `@penwell/draw-on/react` | `DrawOnProps`, `DrawOnHandle`, `DrawOnApi`, `DrawOnStatus`, `DrawTrigger` |
+| `@penwell/draw-on/element` | `DrawOnElement` |
+
+## The handle
+
+### `DrawOnDrawing`
+
+```ts
+interface DrawOnDrawing {
+    readonly el: SVGSVGElement;
+    readonly duration: number;
+    progress: number;
+    readonly playing: boolean;
+    playbackRate: number;
+    readonly stats: DrawStats;
+
+    play(): Promise<boolean>;
+    reverse(): Promise<boolean>;
+    restart(): Promise<boolean>;
+    pause(): void;
+    resume(): Promise<boolean>;
+    seek(fraction: number): void;
+    seekTime(ms: number): void;
+    setProgress(fraction: number): void;
+    reset(): void;
+    on(event: DrawEvent, handler: (progress: number) => void): () => void;
+    destroy(): void;
+}
+```
+
+`progress` is read-write: assigning it seeks. `setProgress` is an alias of `seek`, kept because recording takes it as a callback.
+
+### `DrawEvent`
+
+```ts
+type DrawEvent = 'start' | 'progress' | 'pause' | 'complete';
+```
+
+`progress` fires on every render, seeks included.
+
+### `DrawStats`
+
+```ts
+interface DrawStats {
+    strokes: number;
+    fills: number;
+    texts: number;
+    resolvedUses: number;
+}
+```
+
+A snapshot taken when `draw()` was called. It does not change as the animation runs.
+
+## Options
+
+### `DrawOptions`
+
+The twenty-three fields listed on the [DrawOptions](/docs/api-v1/draw-options) page. The unions it uses:
+
+```ts
+type DrawType = 'delayed' | 'sync' | 'oneByOne' | 'stagger' | 'speed';
+type RevealMode = 'end' | 'stroke' | 'none';
+type TextMode = 'fade' | 'type' | 'none';
+```
+
+### `PenOptions`
+
+```ts
+interface PenOptions {
+    radius?: number;      // default 3, in SVG user units
+    color?: string;       // defaults to your stroke colour
+    element?: SVGElement; // any SVG element, drawn around 0, 0
+}
+```
+
+### `SketchyOptions`
+
+```ts
+interface SketchyOptions {
+    roughness?: number;   // default 1.2, max jitter in user units
+    seed?: number;        // default 1, same seed gives the same wobble
+    step?: number;        // default 6, sample spacing in user units
+}
+```
+
+### `Easing`
+
+```ts
+type EasingName =
+    | 'linear'
+    | 'easeIn'
+    | 'easeOut'
+    | 'easeInOut'
+    | 'easeOutCubic'
+    | 'easeInOutCubic'
+    | 'easeOutQuart'
+    | 'easeOutBack';
+
+type EasingFn = (t: number) => number;
+type Easing = EasingName | EasingFn;
+```
+
+`easings` is exported as `Record<EasingName, EasingFn>` if you want to inspect a curve or reuse one.
+
+## Helper options
+
+### `MountOptions`
+
+```ts
+interface MountOptions extends DrawOptions {
+    replace?: boolean;     // default true
+    responsive?: boolean;  // default true
+    fetchInit?: RequestInit;
+}
+```
+
+### `AnimatedSvgOptions`
+
+```ts
+type AnimatedSvgOptions = Omit<
+    DrawOptions,
+    'autoplay' | 'loop' | 'yoyo' | 'playbackRate' | 'pen'
+    | 'onStart' | 'onProgress' | 'onComplete'
+>;
+```
+
+### `ScrollScrubOptions`
+
+```ts
+interface ScrollScrubOptions {
+    target?: Element;  // defaults to drawing.el
+    start?: number;    // default 0.9
+    end?: number;      // default 0.3
+}
+```
+
+### `InViewOptions`
+
+```ts
+interface InViewOptions {
+    threshold?: number;  // default 0.3
+    once?: boolean;      // default true
+    onLeave?: () => void;
+    rootMargin?: string;
+}
+```
+
+## React types
+
+```ts
+type DrawTrigger = 'auto' | 'inView' | 'hover' | 'click' | 'manual';
+
+type DrawOnStatus =
+    | 'idle' | 'loading' | 'ready' | 'drawing' | 'paused' | 'done' | 'error';
+
+interface UseDrawOnOptions extends Omit<DrawOptions, 'autoplay'> {
+    svg?: string;
+    src?: string;
+    trigger?: DrawTrigger;
+    progress?: number;
+    rebuildKey?: unknown;
+    onReady?: (drawing: DrawOnDrawing) => void;
+    onError?: (error: Error) => void;
+}
+
+interface DrawOnApi {
+    ref: RefObject<HTMLDivElement>;
+    drawing: DrawOnDrawing | null;
+    status: DrawOnStatus;
+    error: Error | null;
+    play(): Promise<boolean>;
+    restart(): Promise<boolean>;
+    reverse(): Promise<boolean>;
+    resume(): Promise<boolean>;
+    pause(): void;
+    seek(fraction: number): void;
+}
+
+interface DrawOnHandle {
+    play(): Promise<boolean>;
+    restart(): Promise<boolean>;
+    reverse(): Promise<boolean>;
+    resume(): Promise<boolean>;
+    pause(): void;
+    seek(fraction: number): void;
+    readonly drawing: DrawOnDrawing | null;
+}
+
+interface DrawOnProps extends UseDrawOnOptions {
+    className?: string;
+    style?: CSSProperties;
+    children?: ReactNode;
+}
+```
+
+`DrawOnHandle` is the command surface, not the host element. If you need the DOM node, query for it or use `useDrawOn`.
+
+## Web Component
+
+```ts
+interface DrawOnElement extends HTMLElement {
+    readonly drawing: DrawOnDrawing | null;
+    play(): Promise<boolean>;
+    restart(): Promise<boolean>;
+    reverse(): Promise<boolean>;
+    pause(): void;
+    seek(fraction: number): void;
+}
+```
+
+The package also augments `HTMLElementTagNameMap` for `'draw-on'`. Only the default tag name is augmented, so a custom tag from `defineDrawOn('my-tag')` will not type-check as an element reference.
+
+## Still exported from 0.1.x
+
+Deprecated, still working, still typed. None of them warns at runtime; the deprecation is JSDoc only.
+
+| Type | Notes |
+| --- | --- |
+| `Drawing` | The 0.1.x handle: `hide`, `reveal`, `play(onDone)`, `stop` |
+| `DrawingOptions` | Six fields, including the frame-based `duration` and `revealMs` |
+| `useSketchDraw` / `UseSketchDrawOptions` / `SketchDrawApi` | The 0.1.x hook |
+| `SketchDraw` / `SketchDrawProps` | The 0.1.x component |
+| `SketchStatus` | `'idle' \| 'drawing' \| 'done' \| 'error'` |
+
+## Unchanged since 0.1.x
+
+`Dimensions`, `RecordOptions`, `InvalidSvgError`, `PresetName`, `DrawType`, and the constants `SHAPE_SELECTOR`, `TEXT_SELECTOR`, `NON_RENDERED_SELECTOR`, `DEFAULT_STROKE`, `DEFAULT_STROKE_WIDTH` and `isPaint`.
+
+`NON_RENDERED_SELECTOR` is new to the type surface even though the behaviour existed: it lists the containers whose children are templates, which is useful if you are writing your own traversal.
+
+## Next steps
+
+- [Migrating from 0.1.x](/docs/v1/migration)
+- [draw()](/docs/api-v1/draw)
+- [useDrawOn and `<DrawOn>`](/docs/api-v1/react)

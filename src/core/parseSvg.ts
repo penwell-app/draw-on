@@ -6,9 +6,36 @@ export class InvalidSvgError extends Error {
     }
 }
 
+const BLOCKED_TAGS = 'script, iframe, object, embed';
+const HREF_ATTRS = ['href', 'xlink:href'];
+const UNSAFE_URL = /^\s*(javascript|vbscript|data:text\/html)/i;
+
+/**
+ * Strips scripts, event-handler attributes and `javascript:` links in place so
+ * untrusted markup can be mounted safely.
+ */
+export function sanitizeSvg<T extends Element>(root: T): T {
+    root.querySelectorAll(BLOCKED_TAGS).forEach((el) => el.remove());
+    root.querySelectorAll('animate, set').forEach((el) => {
+        const name = el.getAttribute('attributeName') ?? '';
+        if (HREF_ATTRS.includes(name) || name.startsWith('on')) el.remove();
+    });
+    [root, ...Array.from(root.querySelectorAll('*'))].forEach((el) => {
+        for (const attr of Array.from(el.attributes)) {
+            const name = attr.name.toLowerCase();
+            // Strip control chars browsers ignore inside URLs, e.g. "java\tscript:".
+            const value = attr.value.replace(/[\u0000-\u001f\u007f\s]+/g, '');
+            if (name.startsWith('on') || (HREF_ATTRS.includes(name) && UNSAFE_URL.test(value))) {
+                el.removeAttribute(attr.name);
+            }
+        }
+    });
+    return root;
+}
+
 /**
  * Parse serialized `<svg>…</svg>` markup into an element owned by the current
- * document, ready to append and animate.
+ * document, ready to append and animate. Scripts and event handlers are removed.
  */
 export function parseSvg(markup: string): SVGSVGElement {
     if (typeof document === 'undefined') {
@@ -22,7 +49,14 @@ export function parseSvg(markup: string): SVGSVGElement {
         throw new InvalidSvgError();
     }
     if (!found) throw new InvalidSvgError();
-    return document.importNode(found, true) as SVGSVGElement;
+    return sanitizeSvg(document.importNode(found, true) as SVGSVGElement);
+}
+
+/** Fetch an `.svg` file and parse it with `parseSvg`. */
+export async function loadSvg(url: string, init?: RequestInit): Promise<SVGSVGElement> {
+    const res = await fetch(url, init);
+    if (!res.ok) throw new InvalidSvgError(`Could not load SVG from ${url} (HTTP ${res.status}).`);
+    return parseSvg(await res.text());
 }
 
 export interface Dimensions {

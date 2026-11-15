@@ -1,0 +1,110 @@
+# Ordering and timing
+
+The order strokes start in is the difference between a diagram that explains itself and one that flickers. `type` picks the strategy, `stagger` and `speed` tune the two modes that need it, and two data attributes override both per element.
+
+## The five orders
+
+<LiveDemo
+    title="All five, on the same artwork"
+    description="Stagger and speed are adjustable, because those two change the shape of the timeline rather than just its pacing."
+    sourceId="ordering-modes"
+    wide
+/>
+
+| `type` | What it does | Total length |
+| --- | --- | --- |
+| `oneByOne` (default) | Strokes run back to back, each given time in proportion to its length | `duration` |
+| `delayed` | Every stroke lasts half the timeline and they all overlap heavily | `duration` |
+| `sync` | Every stroke at once, across the whole timeline | `duration` |
+| `stagger` | An even gap between each start | `duration` plus the gaps |
+| `speed` | Constant pen speed, in user units per second | Derived from geometry |
+
+`delayed` is the one people reach for by accident. It does not delay, it overlaps: the first stroke starts at 0, the last starts halfway, and each runs for the full remaining half. The result reads as a cascade.
+
+## Constant pen speed
+
+`type: 'speed'` ignores `duration` completely. It works out how long each stroke should take from its actual length, so a long line and a short line take proportionally the same time to draw.
+
+```ts
+draw(svg, { type: 'speed', speed: 700, ease: 'linear', pen: true });
+```
+
+`speed` is in SVG user units per second, default 400. Because a viewBox scales user units, the same `speed` looks different at different `viewBox` sizes. If the pen is racing, your viewBox is probably large.
+
+The `signature` preset is this configuration, which is why it sets `pen: true` and `ease: 'linear'`.
+
+## Gaps between strokes
+
+```ts
+draw(svg, { type: 'stagger', stagger: 90, duration: 2200 });
+```
+
+`stagger` is the gap in milliseconds between one stroke starting and the next, default 80. The total length grows as the gap grows: with four strokes and a 200ms gap you get three gaps, so the animation runs 600ms longer than `duration` alone would suggest. There is a floor, though. Each stroke always gets at least a quarter of `duration`, so a huge gap cannot squeeze the drawing down to nothing.
+
+## Taking control per element
+
+### `data-draw-order`
+
+Put it on a shape, or on any ancestor inside the same `<svg>`, and strokes are sorted by that number before the timeline is built.
+
+```html
+<svg viewBox="0 0 400 200">
+  <rect data-draw-order="3" x="20"  y="40" width="120" height="80" fill="#f4c95d" />
+  <rect data-draw-order="1" x="160" y="40" width="120" height="80" fill="#7bc6a4" />
+  <rect data-draw-order="2" x="300" y="40" width="80"  height="80" fill="#a8d8ea" />
+</svg>
+```
+
+Strokes are sorted, and the sort is stable, so shapes with the same number keep their document order. Anything with no attribute at all counts as 0, which puts it first.
+
+Two limits worth knowing. The attribute reorders **strokes only**, not fills or labels, and it has no visible effect under `type: 'sync'` because every stroke already occupies the whole timeline.
+
+### `data-draw-skip`
+
+Leave an element completely alone. It is not hidden, not animated, and not counted in `stats`.
+
+```html
+<svg viewBox="0 0 400 200">
+  <use href="#logo-mark" data-draw-skip="" />
+  <path d="M20 160 H380" stroke="#27241a" stroke-width="3" />
+</svg>
+```
+
+Any value works, because only presence is checked. `data-draw-skip="false"` still skips, which trips people up when they try to toggle it from script.
+
+<LiveDemo
+    title="Symbols, nested use and a skipped element"
+    description="Two symbols are local to this SVG, two more are defined elsewhere on the page, and the last icon is skipped."
+    sourceId="symbol-sprite"
+    wide
+/>
+
+## Delaying and repeating
+
+```ts
+draw(svg, { delay: 400 });                    // wait before starting
+draw(svg, { loop: true });                    // forever
+draw(svg, { loop: 3 });                       // three extra passes
+draw(svg, { yoyo: true, loop: true });        // draw, undraw, draw
+```
+
+`loop` takes a boolean or a count. It is worth being precise about the number: `loop: 3` is four plays in total, because the count is *extra* iterations on top of the first.
+
+`delay` only applies when playing forward from position 0. Calling `play()` again partway through the drawing does not re-apply it.
+
+## Where the fills land
+
+`revealStart` is a progress value, not a time, and it is independent of `duration`. At 0.6, fills begin fading in over the final 40% of the timeline.
+
+```ts
+draw(svg, { revealStart: 0.8 });  // fills hold back longer
+draw(svg, { revealStart: 0.1 });  // fills arrive almost immediately
+```
+
+It is clamped just below 1, because a value of exactly 1 would leave no room to fade.
+
+## Next steps
+
+- [DrawOptions](/docs/api-v1/draw-options) for the full table
+- [The pen nib](/docs/v1/pen), which pairs naturally with `type: 'speed'`
+- [presets](/docs/api-v1/presets), where `stagger` and `speed` are already tuned

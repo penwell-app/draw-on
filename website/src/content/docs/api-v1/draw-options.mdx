@@ -1,0 +1,169 @@
+# `DrawOptions`
+
+Every option `draw()` accepts, with the default the engine actually uses. Defaults are read from the source at build time, so this table cannot drift from the behaviour.
+
+<PropTable
+    caption="Timing"
+    rows={[
+        { name: 'duration', type: 'number', default: '2000', description: 'Total length in milliseconds. Ignored by type speed' },
+        { name: 'type', type: 'DrawType', default: "'oneByOne'", description: 'Stroke ordering. See Ordering and timing' },
+        { name: 'stagger', type: 'number', default: '80', description: 'Gap between stroke starts in ms, for type stagger' },
+        { name: 'speed', type: 'number', default: '400', description: 'Constant pen speed in user units per second, for type speed' },
+        { name: 'delay', type: 'number', default: '0', description: 'Wait this many ms before the first run starts' },
+        { name: 'playbackRate', type: 'number', default: '1', description: 'Speed multiplier. Also settable on the handle mid-flight' },
+        { name: 'loop', type: 'boolean | number', default: 'false', description: 'true loops forever. A number repeats that many extra times' },
+        { name: 'yoyo', type: 'boolean', default: 'false', description: 'Undraw on alternate loops instead of snapping back' },
+    ]}
+/>
+
+<PropTable
+    caption="Shape"
+    rows={[
+        { name: 'ease', type: 'Easing', default: "'easeOutCubic'", description: 'Easing across the whole timeline' },
+        { name: 'strokeEase', type: 'Easing', default: "'linear'", description: 'Easing inside each individual stroke' },
+        { name: 'stroke', type: 'string', default: "'#27241a'", description: 'Outline colour given to fill-only shapes' },
+        { name: 'strokeWidth', type: 'string | number', default: "'1.25'", description: 'Outline width given to fill-only shapes without one' },
+        { name: 'outline', type: 'boolean', default: 'true', description: 'Give fill-only shapes an outline to draw in the first place' },
+        { name: 'sketchy', type: 'boolean | SketchyOptions', default: 'false', description: 'Redraw shapes with a hand-drawn wobble' },
+        { name: 'pen', type: 'boolean | PenOptions', default: 'false', description: 'Show a nib riding the tip of the stroke being drawn' },
+    ]}
+/>
+
+<PropTable
+    caption="Reveal"
+    rows={[
+        { name: 'reveal', type: 'RevealMode', default: "'end'", description: "How fills fade in: 'end', 'stroke' or 'none'" },
+        { name: 'revealStart', type: 'number', default: '0.6', description: 'For reveal end: where the fill fade begins, 0 to 1. Clamped below 1' },
+        { name: 'text', type: 'TextMode', default: "'fade'", description: "How labels appear: 'fade', 'type' or 'none'" },
+    ]}
+/>
+
+<PropTable
+    caption="Lifecycle"
+    rows={[
+        { name: 'autoplay', type: 'boolean', default: 'true', description: 'Start drawing as soon as draw returns' },
+        { name: 'reducedMotion', type: "'respect' | 'ignore'", default: "'respect'", description: 'What to do when the user prefers reduced motion' },
+        { name: 'onStart', type: '() => void', description: 'Fires when a run begins from the beginning' },
+        { name: 'onProgress', type: '(p: number) => void', description: 'Fires on every render, seeks included' },
+        { name: 'onComplete', type: '() => void', description: 'Fires when the timeline ends' },
+    ]}
+/>
+
+## `ease`
+
+`ease` shapes the whole timeline, from 0 to 1. It decides whether the drawing rushes the start or settles into the finish.
+
+Eight curves ship with the package, and `easings` exports them as functions if you want to inspect or reuse one:
+
+| Name | Shape |
+| --- | --- |
+| `linear` | No shaping at all |
+| `easeIn` | Slow start, fast finish |
+| `easeOut` | Fast start, slow finish |
+| `easeInOut` | Slow both ends, fast in the middle |
+| `easeOutCubic` | The default. A soft, quick settle |
+| `easeInOutCubic` | Symmetric, gentler than `easeInOut` |
+| `easeOutQuart` | A sharper version of `easeOut` |
+| `easeOutBack` | Overshoots slightly past the end, then settles |
+
+Any function of the form `(t: number) => number` works too. It is used verbatim, with no validation of range or monotonicity.
+
+```ts
+draw(svg, { ease: (t) => t * t * (3 - 2 * t) });  // smoothstep
+```
+
+An unrecognised string falls back rather than throwing, so a typo gives you the default curve and no error.
+
+<LiveDemo
+    title="Every named curve, plus a custom function"
+    description="Same artwork each time. The only variable is the easing."
+    sourceId="easing-lab"
+    wide
+/>
+
+## `strokeEase`
+
+Where `ease` moves through the timeline, `strokeEase` moves within a single stroke. The two compose: the timeline position is eased globally, then each stroke's slice of it is eased again.
+
+```ts
+draw(svg, {
+    ease: 'linear',        // even hand-offs between strokes
+    strokeEase: 'easeOut', // but each stroke itself finishes fast
+});
+```
+
+Leave `strokeEase` linear when you want constant pen speed within each stroke, which is what makes `type: 'speed'` read as a real pen.
+
+## `reveal`
+
+Fills are hidden at the start and brought back as the drawing progresses. Three strategies:
+
+| Value | Behaviour |
+| --- | --- |
+| `'end'` (default) | Every fill fades together, starting at `revealStart` |
+| `'stroke'` | Each fill fades in behind its own stroke, over that stroke's last 40% |
+| `'none'` | Fills are never hidden and never animated |
+
+`reveal: 'stroke'` is the one that makes diagrams read properly, because a box is filled at the moment its outline finishes rather than all at once at the end. The `diagram` preset uses it.
+
+Fills on shapes that never got an outline, because they are fill-only and `outline` is off, fall back to the `end` behaviour even under `reveal: 'stroke'`.
+
+<LiveDemo
+    title="Three reveal strategies and three label strategies"
+    description="Fill reveal and label reveal are independent in 1.0."
+    sourceId="reveal-text-modes"
+    wide
+/>
+
+## `text`
+
+| Value | Behaviour |
+| --- | --- |
+| `'fade'` (default) | Labels fade in over the reveal window |
+| `'type'` | Labels appear letter by letter |
+| `'none'` | Labels are left untouched |
+
+`type` works against a character budget shared across the whole SVG, walked in document order. It is a reveal, not a typing effect: every label reaches its full text at once, they just do it in sequence. `image` and `foreignObject` always fade, since there is no text to type.
+
+## `pen`
+
+```ts
+draw(svg, { pen: true });                          // default circle nib
+draw(svg, { pen: { radius: 5, color: '#2f6a5c' } });
+draw(svg, { pen: { element: myNib } });           // bring your own
+```
+
+The nib rides the tip of whichever stroke is mid-draw and hides when there is none. It only attaches to strokes it can dash, so dashed artwork gets no nib. Full detail on [the pen nib](/docs/v1/pen).
+
+## `sketchy`
+
+```ts
+draw(svg, { sketchy: true });
+draw(svg, { sketchy: { roughness: 2.4, seed: 7, step: 4 } });
+```
+
+Resamples each shape's outline and jitters the samples with a seeded generator, so the same `seed` always produces the same wobble. Shapes other than `path` are replaced with a generated path, and `destroy()` puts the originals back. See [hand-drawn mode](/docs/v1/sketchy).
+
+## `reducedMotion`
+
+`respect` is the default and it is a real behaviour, not a hint: when the user prefers reduced motion, every run jumps straight to the finished frame, `start` never fires and `onStart` never runs. `complete` still fires, so code waiting on that keeps working.
+
+Set `reducedMotion: 'ignore'` to animate regardless. Only do that if your page has its own reason to override the preference.
+
+## Combining options
+
+Options compose freely, and `presets` is just shorthand for a combination that already works:
+
+```ts
+import { presets } from '@penwell/draw-on/core';
+
+draw(svg, { ...presets.diagram, duration: 3000, delay: 200 });
+```
+
+One ordering caveat worth repeating: under `type: 'speed'`, `duration` is ignored entirely and the timeline length comes from the geometry.
+
+## Next steps
+
+- [draw()](/docs/api-v1/draw) for the handle itself
+- [presets](/docs/api-v1/presets)
+- [Ordering and timing](/docs/v1/ordering) for `data-draw-order` and `data-draw-skip`

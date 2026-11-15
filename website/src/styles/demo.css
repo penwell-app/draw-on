@@ -57,9 +57,9 @@
     place-items: center;
     min-height: 260px;
     padding: 26px;
-    background-color: var(--surface-raised);
-    background-image: linear-gradient(var(--paper-grid) 1px, transparent 1px),
-        linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
+    background-color: var(--paper);
+    background-image: linear-gradient(rgba(39, 36, 26, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(39, 36, 26, 0.045) 1px, transparent 1px);
     background-size: 24px 24px;
 }
 
@@ -114,6 +114,124 @@
     color: var(--warn);
     font-family: var(--mono);
     font-size: 12.5px;
+}
+
+/* Control primitives for the 1.0 demos. Each one recurs across several demos
+   (toggles in the pen, sketchy, loop and yoyo demos; the split grid in the
+   ordering, reveal and preset demos; the log in the event demos), so they are
+   defined once here rather than inlined per demo. */
+
+.demo-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: var(--text-soft);
+    cursor: pointer;
+}
+
+.demo-check input {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: var(--accent);
+}
+
+.demo-check:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: var(--radius-sm);
+}
+
+.demo-split {
+    display: grid;
+    gap: 1px;
+    grid-template-columns: repeat(auto-fit, minmax(236px, 1fr));
+    background: var(--line-soft);
+}
+
+.demo-split .demo-stage {
+    min-height: 188px;
+    padding: 18px;
+}
+
+.demo-split-label {
+    padding: 7px 14px;
+    background: var(--card);
+    border-top: 1px solid var(--line-soft);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: var(--text-mute);
+    text-align: center;
+}
+
+.demo-log {
+    max-height: 132px;
+    margin: 0;
+    padding: 10px 16px;
+    overflow-y: auto;
+    background: var(--card);
+    border-top: 1px solid var(--line-soft);
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text-soft);
+}
+
+.demo-log b {
+    color: var(--text-strong);
+    font-weight: 600;
+}
+
+.demo-log-empty {
+    color: var(--text-mute);
+    font-style: italic;
+}
+
+/* The rendered PNG strip in the recordFrames demo. Frames are laid out in a single
+   scrollable row so all 31 stay reachable without pushing the page down. */
+.demo-frames {
+    display: flex;
+    gap: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    background: var(--card);
+    border-top: 1px solid var(--line-soft);
+}
+
+.demo-frame {
+    flex: 0 0 auto;
+    display: grid;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--paper);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-mute);
+}
+
+.demo-frame:hover {
+    border-color: var(--accent);
+}
+
+.demo-frame:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.demo-frame img {
+    display: block;
+    width: 104px;
+    height: auto;
+    border-radius: 3px;
+}
+
+.demo-frame span {
+    text-align: center;
 }
 
 .demo-source {

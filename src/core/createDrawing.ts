@@ -1,25 +1,13 @@
-import Vivus from 'vivus';
-import {
-    DEFAULT_STROKE,
-    DEFAULT_STROKE_WIDTH,
-    SHAPE_SELECTOR,
-    TEXT_SELECTOR,
-    isPaint,
-} from './paint';
+import { draw, type Drawing as DrawOnDrawing } from './draw';
+import type { DrawType } from './engine/timeline';
 
-/**
- * The draw-on engine. Takes an inline `<svg>`, strips its fills/labels so Vivus
- * can animate the strokes on, and reveals them at the end — the lines literally
- * draw themselves, then the diagram fills in.
- *
- * This mutates the passed SVG in place (Vivus converts shapes to paths), so pass
- * a clone if you need the original markup preserved.
- */
+// v0 API kept for compatibility; `draw()` is the v1 entry point.
 
-export type DrawType = 'delayed' | 'sync' | 'oneByOne';
+export type { DrawType } from './engine/timeline';
 
+/** @deprecated Use `DrawOptions` with `draw()`, which takes milliseconds. */
 export interface DrawingOptions {
-    /** Vivus animation length in frames. Higher is slower. */
+    /** Animation length in 60 fps frames. Higher is slower. Defaults to 220. */
     duration?: number;
     /** Stroke ordering strategy. */
     type?: DrawType;
@@ -32,16 +20,17 @@ export interface DrawingOptions {
      * of 0.6 means they appear over the final 40% of the draw.
      */
     revealStart?: number;
-    /** Fade duration in milliseconds for `hide` and `reveal`. */
+    /** Fade duration in milliseconds for `reveal`. */
     revealMs?: number;
 }
 
+/** @deprecated Use the `Drawing` returned by `draw()`. */
 export interface Drawing {
-    /** The animated SVG element (post Vivus pathformer). */
+    /** The animated SVG element. */
     readonly el: SVGSVGElement;
-    /** Blank the fills/labels so only strokes will draw. */
+    /** Blank the drawing so only strokes will draw. */
     hide(): void;
-    /** Restore fills/labels with a soft fade. */
+    /** Ease to the finished drawing over `revealMs`. */
     reveal(): void;
     /** Jump to an arbitrary progress 0 to 1 (for frame-accurate recording). */
     setProgress(fraction: number): void;
@@ -51,99 +40,74 @@ export interface Drawing {
     /** Rewind to the blank, undrawn state. Call before replaying. */
     reset(): void;
     destroy(): void;
+    /** The v1 engine behind this drawing. */
+    readonly drawing: DrawOnDrawing;
 }
 
+const FRAME_MS = 1000 / 60;
+
+/** @deprecated Use `draw(svg, options)`. */
 export function createDrawing(svg: SVGSVGElement, opts: DrawingOptions = {}): Drawing {
-    const strokeColor = opts.stroke ?? DEFAULT_STROKE;
-    const strokeWidth = String(opts.strokeWidth ?? DEFAULT_STROKE_WIDTH);
-    const revealStart = Math.min(0.999, Math.max(0, opts.revealStart ?? 0.6));
-    const revealMs = opts.revealMs ?? 500;
-    const fade = `${revealMs}ms ease`;
-
-    // Give fill-only shapes a stroke so Vivus has an outline to draw.
-    svg.querySelectorAll(SHAPE_SELECTOR).forEach((el) => {
-        const stroke = el.getAttribute('stroke') || getComputedStyle(el).stroke;
-        const fill = el.getAttribute('fill') || getComputedStyle(el).fill;
-        if (!isPaint(stroke) && isPaint(fill)) {
-            el.setAttribute('stroke', strokeColor);
-            if (!el.getAttribute('stroke-width')) el.setAttribute('stroke-width', strokeWidth);
-        }
-    });
-
-    const vivus = new Vivus(svg as unknown as HTMLElement, {
+    const drawing = draw(svg, {
+        duration: (opts.duration ?? 220) * FRAME_MS,
         type: opts.type ?? 'oneByOne',
-        duration: opts.duration ?? 220,
-        start: 'manual',
-        animTimingFunction: Vivus.EASE_OUT,
+        stroke: opts.stroke,
+        strokeWidth: opts.strokeWidth,
+        revealStart: opts.revealStart,
+        ease: 'easeOutCubic',
+        autoplay: false,
+        reducedMotion: 'ignore',
     });
+    const revealMs = opts.revealMs ?? 500;
+    let fade = 0;
 
-    const el = vivus.el as unknown as SVGSVGElement;
-
-    const shapes = Array.from(el.querySelectorAll(SHAPE_SELECTOR)).filter((node) => {
-        const fill = node.getAttribute('fill') || getComputedStyle(node).fill;
-        if (!isPaint(fill)) return false;
-        (node as SVGElement).dataset.origFillOpacity = node.getAttribute('fill-opacity') || '1';
-        return true;
-    });
-    const texts = Array.from(el.querySelectorAll(TEXT_SELECTOR)) as HTMLElement[];
-
-    function hide() {
-        shapes.forEach((node) => {
-            (node as SVGElement).style.transition = '';
-            node.setAttribute('fill-opacity', '0');
-        });
-        texts.forEach((node) => {
-            node.style.transition = '';
-            node.style.opacity = '0';
-        });
+    function cancelFade() {
+        if (fade) cancelAnimationFrame(fade);
+        fade = 0;
     }
 
-    function reveal() {
-        shapes.forEach((node) => {
-            (node as SVGElement).style.transition = `fill-opacity ${fade}`;
-            node.setAttribute('fill-opacity', (node as SVGElement).dataset.origFillOpacity || '1');
-        });
-        texts.forEach((node) => {
-            node.style.transition = `opacity ${fade}`;
-            node.style.opacity = '1';
-        });
-    }
-
-    function setProgress(fraction: number) {
-        vivus.setFrameProgress(fraction);
-        const amount = Math.min(1, Math.max(0, (fraction - revealStart) / (1 - revealStart)));
-        shapes.forEach((node) => {
-            const target = Number((node as SVGElement).dataset.origFillOpacity || '1') * amount;
-            node.setAttribute('fill-opacity', String(target));
-        });
-        texts.forEach((node) => {
-            node.style.opacity = String(amount);
-        });
-    }
-
-    function play(onDone?: () => void) {
-        hide();
-        vivus.play(1, () => {
-            reveal();
-            onDone?.();
-        });
-    }
-
-    function stop() {
-        vivus.stop();
-    }
-
-    function reset() {
-        vivus.reset();
-    }
-
-    function destroy() {
-        try {
-            vivus.destroy();
-        } catch {
-            /* noop */
-        }
-    }
-
-    return { el, hide, reveal, setProgress, play, stop, reset, destroy };
+    return {
+        el: drawing.el,
+        drawing,
+        hide() {
+            cancelFade();
+            drawing.reset();
+        },
+        reveal() {
+            cancelFade();
+            const from = drawing.progress;
+            if (from >= 1 || revealMs <= 0) {
+                drawing.seek(1);
+                return;
+            }
+            const t0 = performance.now();
+            const step = (now: number) => {
+                const k = Math.min(1, (now - t0) / revealMs);
+                drawing.seek(from + (1 - from) * k);
+                fade = k < 1 ? requestAnimationFrame(step) : 0;
+            };
+            fade = requestAnimationFrame(step);
+        },
+        setProgress(fraction) {
+            cancelFade();
+            drawing.seek(fraction);
+        },
+        play(onDone) {
+            cancelFade();
+            void drawing.play().then((finished) => {
+                if (finished) onDone?.();
+            });
+        },
+        stop() {
+            drawing.pause();
+        },
+        reset() {
+            cancelFade();
+            drawing.reset();
+        },
+        destroy() {
+            cancelFade();
+            drawing.destroy();
+        },
+    };
 }

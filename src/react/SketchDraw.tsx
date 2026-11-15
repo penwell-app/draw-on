@@ -9,6 +9,8 @@ export interface SketchDrawProps extends UseSketchDrawOptions {
 }
 
 /**
+ * @deprecated Use `<DrawOn>`.
+ *
  * Unstyled host for a draw-on animation. Bring your own chrome via `children`,
  * or drop down to `useSketchDraw` for full control of the markup.
  */

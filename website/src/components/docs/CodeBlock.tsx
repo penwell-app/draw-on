@@ -33,16 +33,13 @@ export function CodeBlock({
 }: CodeBlockProps) {
     const preRef = useRef<HTMLPreElement>(null);
     const { copied, copy } = useCopyToClipboard();
-    const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
+    const [highlight, setHighlight] = useState<{ code: string; html: string } | null>(null);
 
     useEffect(() => {
-        if (!code || children) {
-            setHighlightedHtml(null);
-            return;
-        }
+        if (!code || children) return undefined;
         let cancelled = false;
         highlightCode(code, language).then((html) => {
-            if (!cancelled) setHighlightedHtml(html);
+            if (!cancelled) setHighlight({ code, html });
         });
         return () => {
             cancelled = true;
@@ -54,8 +51,11 @@ export function CodeBlock({
         void copy(text);
     };
 
-    const innerCodeHtml = highlightedHtml
-        ? highlightedHtml.replace(/^<pre[^>]*>|<\/pre>$/gi, '')
+    // Keyed on the source so a slow highlight for an older snippet is never shown
+    // against newer code, and a snippet with nothing to highlight falls through.
+    const currentHtml = highlight && highlight.code === code ? highlight.html : null;
+    const innerCodeHtml = currentHtml
+        ? currentHtml.replace(/^<pre[^>]*>|<\/pre>$/gi, '')
         : null;
 
     return (

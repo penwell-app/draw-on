@@ -1,0 +1,114 @@
+# `toAnimatedSVG`
+
+Bakes the draw-on into a standalone SVG string animated by CSS keyframes alone. No JavaScript, no runtime, no dependency. The output works in a README, in an `<img>`, in an email client and in Notion, which is the whole point.
+
+<ApiSignature
+    signature="toAnimatedSVG(source: SVGSVGElement | string, options?: AnimatedSvgOptions): string"
+    returns="string"
+    entry="@penwell/draw-on/core"
+/>
+
+## Using it
+
+```ts
+import { downloadBlob, toAnimatedSVG } from '@penwell/draw-on/core';
+
+const file = toAnimatedSVG(markup, { duration: 2500, type: 'stagger' });
+
+downloadBlob(new Blob([file], { type: 'image/svg+xml' }), 'logo-animated.svg');
+```
+
+Then commit that file and reference it:
+
+```markdown
+![logo](https://your-cdn.com/logo-animated.svg)
+```
+
+<LiveDemo
+    title="Rendered as a plain image"
+    description="The stage below is an img tag pointing at a data URL. No script in the file, and no Draw-On involved in showing it."
+    sourceId="animated-svg-export"
+    wide
+/>
+
+## What the file contains
+
+A `<style>` block as the first child, plus inline `animation` declarations on every stroke, fill and label.
+
+```css
+@keyframes do-d { to { stroke-dashoffset: 0 } }
+@keyframes do-h { from, to { stroke-opacity: 0 } }
+@keyframes do-s { from { stroke-opacity: 0 } }
+@keyframes do-f { from { fill-opacity: 0 } }
+@keyframes do-t { from { opacity: 0 } }
+
+@media (prefers-reduced-motion: reduce) {
+    .do-a {
+        animation: none !important;
+        stroke-dashoffset: 0 !important;
+    }
+}
+```
+
+Strokes animate their `stroke-dashoffset` down to zero, fills animate `fill-opacity` from zero, labels animate `opacity`. That is the entire technique, and it is why the result is a few kilobytes rather than a bundle.
+
+The reduced-motion block is worth having. An SVG in a README cannot know the reader's settings, and this makes the file respect them without asking.
+
+## `AnimatedSvgOptions`
+
+Everything from `DrawOptions` except the parts that need a running engine:
+
+```ts
+type AnimatedSvgOptions = Omit<
+    DrawOptions,
+    'autoplay' | 'loop' | 'yoyo' | 'playbackRate' | 'pen' | 'onStart' | 'onProgress' | 'onComplete'
+>;
+```
+
+So `duration`, `type`, `stagger`, `speed`, `ease`, `strokeEase`, `reveal`, `revealStart`, `text`, `outline`, `sketchy`, `stroke`, `strokeWidth` and `delay` all carry over.
+
+## What it cannot do
+
+The export is deliberately narrower than the engine. These are not bugs in your configuration.
+
+| Missing | Why |
+| --- | --- |
+| **Pen nib** | `pen` is omitted from the option type. Positioning a nib needs per-frame code, and there is none |
+| **Callbacks** | Nothing is running to call them |
+| **`loop`, `yoyo`, `playbackRate`** | CSS animations do not expose a controller |
+| **`text: 'type'`** | Silently behaves as `fade`. Both modes emit the same opacity animation |
+| **Custom easing functions** | Degrade to `linear`, because the curve cannot be expressed as a cubic-bezier without sampling it |
+| **`reveal: 'stroke'` precision** | Timings are derived by inverting the easing curve numerically, so boundaries are approximate |
+
+The easing names all map to their CSS equivalents, so `easeOutCubic` becomes `cubic-bezier(.215,.61,.355,1)` and stays faithful.
+
+## Requirements
+
+**A browser.** Geometry is measured in a hidden off-screen host before the file is built, because stroke lengths come from `getTotalLength()`. Calling it during server rendering throws.
+
+**Untouched source.** The function clones whatever you give it, so your SVG is never mutated. That means do not pass an SVG that is already mid-draw to `draw()`; the dash offsets would be baked in.
+
+**Same-origin images.** External `<image href>` sources are not inlined, so a remote image may not load once the file is on its own.
+
+## Symbols work too
+
+`<use>` and `<symbol>` are resolved before the keyframes are written, and the definitions are inlined into the output. The exported file does not depend on the document it came from. See [sprites and `<use>`](/docs/v1/sprites).
+
+## Build it in a script
+
+Because it needs a DOM, the usual place is a build step, a test, or a route you visit once and keep the output from.
+
+```ts
+// scripts/build-logo.ts, run with a headless browser
+import { readFileSync, writeFileSync } from 'node:fs';
+import { toAnimatedSVG } from '@penwell/draw-on/core';
+
+const source = readFileSync('assets/logo.svg', 'utf8');
+writeFileSync('public/logo-animated.svg', toAnimatedSVG(source, { type: 'stagger' }));
+```
+
+## Next steps
+
+- [`<draw-on>`](/docs/api-v1/element) when you can ship script but not React
+- [Recording (1.0)](/docs/api-v1/record) when you need video or frames rather than a file
+- [Hand-drawn mode](/docs/v1/sketchy), which the export does support

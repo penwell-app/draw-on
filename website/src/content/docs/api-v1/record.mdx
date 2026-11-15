@@ -1,0 +1,132 @@
+# Recording (1.0)
+
+Two ways to get pixels out of a drawing: a WebM video, or a series of PNG frames. Both work by driving `setProgress` from 0 to 1 while a canvas captures what the SVG looks like at each step.
+
+## Check first
+
+```ts
+import { canRecordVideo } from '@penwell/draw-on/core';
+
+if (canRecordVideo()) {
+    // MediaRecorder and canvas.captureStream are both present
+}
+```
+
+That returns true when `MediaRecorder` exists and `HTMLCanvasElement.prototype.captureStream` is a function. Chromium browsers do. It tells you nothing about `recordFrames`, which needs only a canvas.
+
+## `recordDrawToWebM`
+
+```ts
+import { computeDims, downloadBlob, recordDrawToWebM } from '@penwell/draw-on/core';
+
+const { width, height } = computeDims(drawing.el, 1280);
+
+const blob = await recordDrawToWebM(drawing.el, drawing.setProgress, {
+    width,
+    height,
+    fps: 30,
+    durationMs: 4000,
+    holdMs: 900,
+    background: '#faf8f3',
+    onProgress: (f) => setBar(f),
+});
+
+downloadBlob(blob, 'draw-on.webm');
+```
+
+<ApiSignature
+    signature="recordDrawToWebM(svg, setProgress, options: RecordOptions): Promise<Blob>"
+    returns="Promise<Blob>"
+    entry="@penwell/draw-on/core"
+/>
+
+`width` and `height` are required. `computeDims` is the usual way to get them: it reads the `viewBox`, falls back to the element's own size, and caps the width while preserving the aspect ratio.
+
+### Options
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `width`, `height` | required | Canvas size in CSS pixels |
+| `fps` | `30` | Frames per second of the output |
+| `durationMs` | `4000` | Total length of the animation |
+| `holdMs` | `900` | How long to hold the finished frame at the end |
+| `background` | `'#faf8f3'` | Canvas fill. `'transparent'` keeps alpha |
+| `scale` | `1` | Pixel density multiplier for sharper output |
+| `inlineImages` | `true` | Embed external `<image>` sources so frames are not blank or tainted |
+| `onProgress` | | Called once per frame with the fraction |
+
+`scale` is the useful one for retina output. The canvas backing store becomes `width * scale` by `height * scale`, and the SVG is drawn into a `width` by `height` region of it, so you get a genuinely supersampled image rather than an upscaled one.
+
+### Wall-clock pacing
+
+The loop paces itself against `performance.now()` and sleeps to keep the video the right length even if rasterising a frame runs slow. Without that, a heavy SVG would produce a video that plays back too fast.
+
+## `recordFrames`
+
+```ts
+import { recordFrames } from '@penwell/draw-on/core';
+
+const frames = await recordFrames(drawing.el, drawing.setProgress, {
+    width: 640,
+    height: 220,
+    fps: 30,
+    durationMs: 1000,
+});
+
+frames.length;          // 31. durationMs / 1000 * fps, plus one
+frames[0] instanceof Blob;  // true, PNG
+```
+
+<ApiSignature
+    signature="recordFrames(svg, setProgress, options: RecordOptions): Promise<Blob[]>"
+    returns="Promise<Blob[]>"
+    entry="@penwell/draw-on/core"
+/>
+
+This is the new one, and it differs from the video path in a way that matters.
+
+**It does not pace.** There is no `sleep` and no `performance.now()`. It renders as fast as the browser can rasterise, so a one-second clip finishes in a fraction of the time. That is the point: you are building a GIF, a sprite sheet or a ZIP, not watching a video play in real time.
+
+**It ignores `holdMs`.** That option is simply not read.
+
+**It defaults to a transparent background**, where the video path defaults to `#faf8f3`.
+
+**It returns `total + 1` frames**, not `total`. The loop is inclusive, so the first frame is progress 0 and the last is exactly 1.
+
+<LiveDemo
+    title="Rendering PNG frames"
+    description="Thirty frames plus the finished one. Every thumbnail saves that frame on its own."
+    sourceId="record-frames"
+    wide
+/>
+
+## `downloadBlob`
+
+```ts
+downloadBlob(blob, 'draw-on.webm');
+```
+
+Works with any blob type, so it handles a WebM, a PNG and an exported SVG alike. It creates an object URL, clicks a temporary anchor, and revokes the URL a second later.
+
+## Two things that will bite you
+
+**External stylesheets and web fonts do not apply.** Every frame is rasterised from a `data:image/svg+xml` URL, and a data URL has no page context. If your SVG relies on a CSS class for its stroke colour, the recorded output will not have it. Put presentation attributes on the shapes themselves.
+
+**Cross-origin images taint the canvas.** `inlineImages` fixes this by fetching each external `<image>` and swapping in a data URL, which is why it defaults to on. A fetch that fails is swallowed and that frame renders without the image.
+
+## After recording
+
+The drawing is left wherever the loop finished. Put it back where you want it:
+
+```ts
+drawing.reveal();
+drawing.seek(1);
+```
+
+`seek(1)` is the current answer. There is no `reveal()` on the 1.0 handle, which is one of the things that changed from 0.1.x.
+
+## Next steps
+
+- [draw()](/docs/api-v1/draw) for `setProgress` and the rest of the handle
+- [toAnimatedSVG](/docs/api-v1/to-animated-svg) for a file that needs no playback at all
+- [Migrating from 0.1.x](/docs/v1/migration) for `exportWebM` on the old hook

@@ -1,0 +1,104 @@
+# `scrollScrub` and `inView`
+
+Two small helpers for the two things people reach for an SVG library to do: tie the draw to the page scroll, or start it once when it comes into view. Both return a cleanup function.
+
+## `scrollScrub`
+
+```ts
+const drawing = draw(svg, { autoplay: false });
+const stop = scrollScrub(drawing);
+
+stop(); // when you are done
+```
+
+<ApiSignature signature="scrollScrub(drawing: DrawOnDrawing, options?: ScrollScrubOptions): () => void" returns="() => void" entry="@penwell/draw-on/core" />
+
+<PropTable
+    columns={['Option', 'Type', 'Default', 'Description']}
+    rows={[
+        { name: 'target', type: 'Element', default: 'drawing.el', description: 'The element whose position drives progress' },
+        { name: 'start', type: 'number', default: '0.9', description: 'Viewport fraction where the target top gives progress 0' },
+        { name: 'end', type: 'number', default: '0.3', description: 'Viewport fraction where the target top gives progress 1' },
+    ]}
+/>
+
+### Reading start and end
+
+They are viewport fractions, not pixel offsets, and they run backwards: `start` is 0.9 by default, meaning the drawing begins when the element's top reaches 90% down the viewport, near the bottom edge. `end` is 0.3, so it finishes when the top reaches 30% down, higher up the screen.
+
+The distance between them is the scroll range that maps onto the whole timeline. A narrow range means a fast draw; a wide one gives you a slower, more deliberate reveal. Values are clamped at render time, so scrolling past the end parks the drawing at 1 rather than running off it.
+
+<LiveDemo
+    title="Scroll-linked drawing"
+    description="This one has no play button on purpose. Scroll the page and the chart follows."
+    sourceId="scroll-scrub-v1"
+    wide
+/>
+
+### Notes
+
+The helper **pauses** the drawing when it attaches, so an autoplaying drawing stops and hands control to the scroll position.
+
+It listens on `window` for both `scroll` and `resize`, throttled to one `requestAnimationFrame`. There is no option to listen on a different element, so a scrollable div needs the listener moved yourself.
+
+The cleanup removes the listeners. It does **not** un-pause the drawing, and it does not destroy it:
+
+```ts
+const stop = scrollScrub(drawing);
+
+return () => {
+    stop();
+    drawing.destroy();  // you still have to do this
+};
+```
+
+## `inView`
+
+```ts
+const stop = inView(drawing.el, () => drawing.restart());
+
+stop();
+```
+
+<ApiSignature signature="inView(el: Element, onEnter: () => void, options?: InViewOptions): () => void" returns="() => void" entry="@penwell/draw-on/core" />
+
+<PropTable
+    columns={['Option', 'Type', 'Default', 'Description']}
+    rows={[
+        { name: 'threshold', type: 'number', default: '0.3', description: 'Share of the element that must be visible, 0 to 1' },
+        { name: 'once', type: 'boolean', default: 'true', description: 'Stop observing after the first hit' },
+        { name: 'onLeave', type: '() => void', description: 'Also called when the element leaves the viewport' },
+        { name: 'rootMargin', type: 'string', description: 'Forwarded to IntersectionObserver' },
+    ]}
+/>
+
+With `once: true`, which is the default, the observer disconnects after `onEnter` runs. Set it to `false` to keep watching, and pair it with `onLeave` if you want to know when the element goes back off screen.
+
+<LiveDemo
+    title="Entering and leaving the viewport"
+    description="The drawing starts below the fold inside this box. Scroll down, then scroll back up."
+    sourceId="in-view"
+    wide
+/>
+
+### Where there is no `IntersectionObserver`
+
+If the browser does not have one, `inView` calls `onEnter` **synchronously and immediately**, then returns a no-op cleanup. The drawing therefore plays once on mount rather than never.
+
+That is the right default: a missing observer means a static document, and a static document should still show its finished artwork rather than nothing.
+
+## Which one do I want
+
+| You want | Use |
+| --- | --- |
+| Progress tied to scroll position, forwards and backwards | `scrollScrub` |
+| Play once when it scrolls into view | `useDrawOn` with `trigger: 'inView'` |
+| Play again every time it re-enters | `inView` with `once: false` |
+
+If you only need "play once on scroll into view", prefer the `trigger: 'inView'` option. It wires the same observer up and cleans it up with the component, so there is nothing to remember.
+
+## Next steps
+
+- [useDrawOn and `<DrawOn>`](/docs/api-v1/react) for the trigger option
+- [draw()](/docs/api-v1/draw) for `seek` and the rest of the handle
+- [Recording (1.0)](/docs/api-v1/record), which drives a drawing through `setProgress` too

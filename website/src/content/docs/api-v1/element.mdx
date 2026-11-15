@@ -1,0 +1,136 @@
+# `<draw-on>`
+
+A Web Component, so a page with no framework, a CMS template or a plain `<script>` block can animate an SVG from markup alone. It lives at `@penwell/draw-on/element`, which the root entry does **not** re-export.
+
+<ApiSignature signature="defineDrawOn(tagName?: string): void" entry="@penwell/draw-on/element" />
+
+## Registering it
+
+```ts
+import { defineDrawOn } from '@penwell/draw-on/element';
+
+defineDrawOn();
+```
+
+Safe to call more than once: it returns early if the tag is already registered. Pass a name to register a custom tag instead of `draw-on`:
+
+```ts
+defineDrawOn('pen-stroke');
+```
+
+Only the default tag gets the `HTMLElementTagNameMap` typing, so TypeScript will not know about a custom tag name.
+
+## Using it
+
+```html
+<draw-on preset="logo" trigger="inView" reveal-start="0.6">
+  <svg viewBox="0 0 200 80">
+    <path d="M20 60 C60 20 100 70 180 30" fill="none" stroke="#27241a" stroke-width="4" />
+  </svg>
+</draw-on>
+```
+
+Or point it at a file:
+
+```html
+<draw-on src="/diagrams/pipeline.svg" trigger="click"></draw-on>
+```
+
+With `src`, the element replaces its own children with the fetched SVG. Without it, the element uses the first `<svg>` it contains and leaves the markup alone.
+
+<Callout type="note" title="The SVG has to be there first">
+    Registration is deferred to the next animation frame, because a custom element
+    upgraded by the parser may not have seen its children yet. If neither `src` nor a
+    child `<svg>` exists, the element emits `draw-error` saying so.
+</Callout>
+
+<LiveDemo
+    title="A real custom element, with its event stream"
+    description="Nothing in this demo is React state driving the drawing. The attributes become options and the events come back out."
+    sourceId="drawon-element"
+    wide
+/>
+
+## Attributes
+
+Camel-case options become kebab-case attributes. Every change rebuilds the drawing.
+
+| Attribute | Becomes | Parsed as |
+| --- | --- | --- |
+| `src` | *(fetches and mounts)* | string |
+| `preset` | base options | one of the five preset names |
+| `trigger` | when to play | `auto`, `inView`, `hover`, `click` |
+| `duration` | `duration` | number |
+| `type` | `type` | string |
+| `stagger` | `stagger` | number |
+| `speed` | `speed` | number |
+| `delay` | `delay` | number |
+| `ease` | `ease` | easing name |
+| `stroke-ease` | `strokeEase` | easing name |
+| `stroke` | `stroke` | string |
+| `stroke-width` | `strokeWidth` | string, passed through as-is |
+| `reveal` | `reveal` | `end`, `stroke` or `none` |
+| `reveal-start` | `revealStart` | number |
+| `text` | `text` | `fade`, `type` or `none` |
+| `loop` | `loop` | see below |
+| `yoyo` | `yoyo` | presence |
+| `pen` | `pen` | presence |
+| `sketchy` | `sketchy` | presence |
+| `no-outline` | `outline: false` | presence |
+
+`preset` is applied first, so an explicit attribute on the same element overrides it.
+
+A few parsing details worth knowing:
+
+- **Presence flags.** `pen`, `sketchy` and `yoyo` are true when the attribute exists, whatever its value. `pen="false"` is still true. Write `<draw-on no-outline>` rather than `outline="false"`, which is why `no-outline` exists at all.
+- **`loop`** takes three forms: absent leaves it alone, an empty value or `true` means forever, a number is a repeat count.
+- **No JSON anywhere.** `stroke-width` is not coerced to a number, and there is no way to pass `PenOptions` or `SketchyOptions` through an attribute. Reach for the JavaScript entry point if you need their values.
+
+## Methods
+
+```js
+const el = document.querySelector('draw-on');
+
+await el.play();      // Promise<boolean>
+await el.restart();   // Promise<boolean>
+await el.reverse();   // Promise<boolean>
+el.pause();           // void
+el.seek(0.5);         // void
+
+el.drawing;           // the DrawOnDrawing, or null
+```
+
+`play`, `restart` and `reverse` resolve `true` when the run finished and `false` when it was interrupted or no drawing exists yet.
+
+## Events
+
+All four are `CustomEvent`s, they bubble, and `detail` carries the state.
+
+| Event | `detail` |
+| --- | --- |
+| `draw-start` | `{ progress }` |
+| `draw-progress` | `{ progress }` |
+| `draw-complete` | `{ progress }` |
+| `draw-error` | `{ error }`, the raw thrown value |
+
+```js
+el.addEventListener('draw-complete', (event) => {
+    console.log(event.detail.progress);
+});
+```
+
+`draw-progress` fires on every render, which for a long animation is every frame. Throttle it if you are doing real work in the handler.
+
+## Lifecycle
+
+`connectedCallback` waits a frame, then builds. `disconnectedCallback` tears down and, if the element loaded its own SVG from `src`, clears it again. Removing and re-adding the element is safe.
+
+## Styling it
+
+The element has no shadow DOM and no default styling. It is a plain custom element, so your stylesheet applies, and the host gets `max-width: 100%` and `height: auto` on the SVG it mounts. `data-status` is not set on this element, unlike `<DrawOn>` in React.
+
+## Next steps
+
+- [mount and friends](/docs/api-v1/mount) for the non-component way to get an SVG into the page
+- [draw()](/docs/api-v1/draw) for the handle behind these methods
+- [toAnimatedSVG](/docs/api-v1/to-animated-svg) if you need the file to work with no script at all

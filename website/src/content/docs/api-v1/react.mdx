@@ -1,0 +1,166 @@
+# `useDrawOn` and `<DrawOn>`
+
+The React surface. `useDrawOn` owns the lifecycle, `<DrawOn>` wraps it with a host element and a ref handle. Both accept every `DrawOptions` field.
+
+<ApiSignature signature="useDrawOn(options?: UseDrawOnOptions): DrawOnApi" returns="DrawOnApi" entry="@penwell/draw-on/react" />
+
+## `useDrawOn`
+
+```tsx
+import { useDrawOn } from '@penwell/draw-on/react';
+
+function Chart({ markup }: { markup: string }) {
+    const api = useDrawOn({ svg: markup, duration: 2000, trigger: 'inView' });
+
+    if (api.status === 'error') return <p>{api.error?.message}</p>;
+
+    return <div ref={api.ref} />;
+}
+```
+
+### Hook-only options
+
+These sit on top of `DrawOptions`, which is why they cannot go straight into `draw()`.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `svg` | `string` | | Markup to mount. Omit to animate the `<svg>` already inside the ref element |
+| `src` | `string` | | URL of an `.svg` file to fetch and mount |
+| `trigger` | `DrawTrigger` | `'auto'` | When the drawing starts |
+| `progress` | `number` | | Controlled position. Disables `trigger` entirely |
+| `rebuildKey` | `unknown` | | Change it to force a rebuild |
+| `onReady` | `(d: DrawOnDrawing) => void` | | Fires once the SVG is mounted and drawing |
+| `onError` | `(e: Error) => void` | | Fires if parsing or loading fails |
+
+`autoplay` is the one `DrawOptions` field that is **not** accepted. The hook always passes `autoplay: false` to the engine and decides playback itself, so that `trigger` and `progress` mean what they say.
+
+### Returned
+
+| Member | Type | Notes |
+| --- | --- | --- |
+| `ref` | `RefObject<HTMLDivElement>` | Attach to your host element |
+| `drawing` | `DrawOnDrawing \| null` | The handle, once mounted |
+| `status` | `DrawOnStatus` | See below |
+| `error` | `Error \| null` | An `Error`, not a string |
+| `play` | `() => Promise<boolean>` | |
+| `restart` | `() => Promise<boolean>` | |
+| `reverse` | `() => Promise<boolean>` | |
+| `resume` | `() => Promise<boolean>` | |
+| `pause` | `() => void` | |
+| `seek` | `(f: number) => void` | |
+
+`status` has seven values, not four: `idle`, `loading`, `ready`, `drawing`, `paused`, `done`, `error`. `loading` only appears when `src` is used.
+
+Status is driven by events, so it does not update per frame. There is no `'progress'` to status mapping, because that would re-render on every frame. Subscribe to `api.drawing.on('progress', ...)` for that.
+
+## Triggers
+
+| `trigger` | Behaviour |
+| --- | --- |
+| `'auto'` | Plays as soon as the drawing is ready |
+| `'inView'` | Plays the first time the element is 30% visible |
+| `'hover'` | Restarts on `mouseenter` |
+| `'click'` | Restarts on `click` |
+| `'manual'` | Nothing plays. You call `play()` |
+
+`'inView'` uses the library's `inView` helper with its defaults, which means it stops observing after the first hit. If you want it to fire repeatedly, watch the drawing yourself.
+
+<LiveDemo
+    title="Every trigger, side by side"
+    description="The inView cell has its own scroll box, because it only means something when the drawing starts outside the viewport."
+    sourceId="usedrawon-triggers"
+    wide
+/>
+
+## Controlled progress
+
+Passing `progress` takes over completely: it seeks, and no listener is attached.
+
+```tsx
+function Scrubber({ markup }: { markup: string }) {
+    const [value, setValue] = useState(0.3);
+
+    const api = useDrawOn({ svg: markup, progress: value });
+
+    return (
+        <>
+            <div ref={api.ref} />
+            <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.001"
+                value={value}
+                onChange={(e) => setValue(Number(e.target.value))}
+            />
+        </>
+    );
+}
+```
+
+This is the simplest path to a scroll-linked or timeline-driven drawing, because the slider owns the number and the hook owns the drawing.
+
+## `<DrawOn>`
+
+```tsx
+import { DrawOn } from '@penwell/draw-on/react';
+
+<DrawOn duration={1800} type="stagger">
+    <svg viewBox="0 0 200 80">{/* ... */}</svg>
+</DrawOn>
+```
+
+It renders a single `<div>`, sets `max-width: 100%` and `height: auto` on the SVG it mounts, and reflects its status to a `data-status` attribute so you can style from CSS if you would rather not read it in JavaScript.
+
+| Prop | Type | Notes |
+| --- | --- | --- |
+| `className` | `string` | Applied to the wrapper `div` |
+| `style` | `CSSProperties` | Applied to the wrapper `div` |
+| `children` | `ReactNode` | An inline `<svg>`. Ignored when `svg` or `src` is set |
+| `ref` | `Ref<DrawOnHandle>` | The command handle |
+
+Everything else comes from `UseDrawOnOptions`.
+
+<Callout type="note" title="Children changed shape in 1.0">
+    `SketchDraw` from 0.1.x took a **function** as children, for render-prop controls.
+    `DrawOn` takes **nodes**, because its children are the SVG itself. The two are both
+    valid `ReactNode` positions, so a missed migration will not throw where you expect.
+</Callout>
+
+### The ref handle
+
+`DrawOnHandle` exposes `play`, `restart`, `reverse`, `resume`, `pause`, `seek` and a read-only `drawing`. That is the command surface, not the DOM node. To get the element itself, query for it, or use `useDrawOn`, whose `ref` is the host element.
+
+<LiveDemo
+    title="The component, its ref handle and JSX children"
+    description="Every button here calls one method on the ref handle."
+    sourceId="drawon-component"
+    wide
+/>
+
+## Rebuilding
+
+The hook rebuilds when `svg`, `src`, `trigger` or `rebuildKey` changes. Options are compared by a serialised key, so changing `duration` or `ease` does rebuild.
+
+Two things do **not** trigger a rebuild, both deliberate:
+
+- **Callbacks.** `onStart`, `onProgress`, `onComplete`, `onReady` and `onError` are held in a ref, so an inline arrow function does not cause a rebuild on every render.
+- **DOM elements in options.** A `pen.element` serialises to a placeholder, so a freshly created nib element keeps a stable key.
+
+One genuine gotcha: because that key is produced with `JSON.stringify`, a **function-valued** option contributes nothing to it. Changing a custom easing function will not rebuild the drawing. Use `rebuildKey` if you need that.
+
+## Loading from a URL
+
+```tsx
+const api = useDrawOn({ src: '/diagrams/pipeline.svg', trigger: 'inView' });
+
+if (api.status === 'loading') return <Spinner />;
+```
+
+`src` uses `AbortController`, so if the component unmounts or `src` changes mid-flight the in-progress fetch is cancelled. A non-2xx response rejects with an `InvalidSvgError` that names the status code.
+
+## Next steps
+
+- [draw()](/docs/api-v1/draw) for what the handle actually does
+- [`<draw-on>`](/docs/api-v1/element) if the SVG lives in markup rather than React
+- [Migrating from 0.1.x](/docs/v1/migration) for the `useSketchDraw` mapping

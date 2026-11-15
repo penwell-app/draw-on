@@ -7,6 +7,11 @@
     --surface-raised: #fbfaf7;
     --card: #fffdf7;
     --paper-grid: rgba(39, 36, 26, 0.045);
+    /* The ground every SVG sample is drawn on. Deliberately not a dark token:
+       sample artwork is authored in fixed ink and paper-white, so flipping it in
+       dark mode would put near-black strokes on near-black. Same value both ways. */
+    --paper: #fbfaf7;
+    --paper-ink: #27241a;
 
     --text: #27241a;
     --text-strong: #16150f;

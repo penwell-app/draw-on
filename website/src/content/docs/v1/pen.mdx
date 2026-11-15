@@ -1,0 +1,85 @@
+# The pen nib
+
+A nib is a small shape that rides the tip of whichever stroke is being drawn. It is the difference between an SVG that animates and one that looks like someone drew it.
+
+<LiveDemo
+    title="The default circle, a custom element, radius and colour"
+    description="Press Draw it. The nib is only ever translated, never rotated."
+    sourceId="pen-nib"
+    wide
+/>
+
+## Turning it on
+
+```ts
+draw(svg, { type: 'speed', pen: true });
+```
+
+That is enough. The nib takes the outline colour, defaults to a radius of 3 user units, and hides itself whenever there is no stroke in flight.
+
+## Tuning it
+
+```ts
+draw(svg, {
+    pen: {
+        radius: 5,
+        color: '#2f6a5c',
+    },
+});
+```
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `radius` | `3` | Radius of the built-in circular nib, in SVG user units |
+| `color` | your `stroke` | Fill of the built-in nib |
+| `element` | a generated `<circle>` | Bring your own shape instead |
+
+Passing `element` replaces the default entirely: the engine will not set `fill` or `r` on it, so the element has to carry its own paint.
+
+## Bringing your own nib
+
+Any SVG element works, drawn **around 0, 0**. The engine only ever writes a `transform: translate(x y)` onto it, so whatever you pass in stays upright.
+
+```ts
+const nib = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+nib.setAttribute('d', 'M0 -12 L8 7 L0 2 L-8 7 Z');
+nib.setAttribute('fill', '#27241a');
+
+draw(svg, { pen: { element: nib } });
+```
+
+A pen nib shape, a pencil tip, a small triangle, a dot with a ring around it: anything that reads correctly at the origin. What does not work is an asymmetric shape you expect to tilt into the direction of travel, because nothing sets a rotation.
+
+## Two limits
+
+### The nib only rides dashable strokes
+
+Each stroke is classified before anything animates. A stroke you dashed yourself is classified `fade`, because its dash pattern is authored and cannot be re-dashed. A zero-length or unmeasurable stroke is classified `dot`. The nib attaches only to `dash` strokes, so on artwork made mostly of dashed lines it will not appear.
+
+This is not usually a problem, since hand-drawn and hand-written artwork is solid strokes. It does surprise people who animate a dashed icon.
+
+### Radius is in user units
+
+`radius: 3` means three viewBox units, not three pixels. On an SVG with a `viewBox` of `0 0 24 24` that is a nib a quarter of the icon wide. On `0 0 1200 800` it is a speck. Scale it with the artwork.
+
+## Pairing it with speed
+
+The nib is at its most convincing when the pen moves at a believable constant rate, which is what `type: 'speed'` gives you. The `signature` preset is exactly this combination.
+
+```ts
+import { presets } from '@penwell/draw-on/core';
+
+draw(svg, presets.signature);
+```
+
+For anything more decorative, `type: 'oneByOne'` with a pen also works. The nib will pause and jump between strokes, because each stroke finishes before the next begins.
+
+## Not available in the CSS export
+
+`toAnimatedSVG()` has no nib. The option is omitted from its type and no element is emitted, because the export is a static file with CSS keyframes and there is no per-frame code to position anything. See [toAnimatedSVG](/docs/api-v1/to-animated-svg#what-it-cannot-do).
+
+## Next steps
+
+- [Ordering and timing](/docs/v1/ordering), where `type: 'speed'` is covered properly
+- [Hand-drawn mode](/docs/v1/sketchy) for wobbling strokes underneath the nib
+- [DrawOptions](/docs/api-v1/draw-options#pen) for the rest of the options

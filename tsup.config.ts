@@ -4,6 +4,8 @@ export default defineConfig({
     entry: {
         index: 'src/index.ts',
         core: 'src/core/index.ts',
+        react: 'src/react/index.ts',
+        element: 'src/element/index.ts',
     },
     format: ['esm', 'cjs'],
     dts: true,
@@ -11,5 +13,5 @@ export default defineConfig({
     treeshake: true,
     sourcemap: true,
     target: 'es2020',
-    external: ['react', 'react-dom', 'vivus'],
+    external: ['react', 'react-dom'],
 });

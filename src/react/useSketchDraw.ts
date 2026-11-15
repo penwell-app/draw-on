@@ -38,6 +38,9 @@ export interface SketchDrawApi {
 const FALLBACK_DIMS: Dimensions = { width: 960, height: 600 };
 
 /**
+ * @deprecated Use `useDrawOn` (or `<DrawOn>`), which also takes `src`, JSX
+ * children, triggers and controlled `progress`.
+ *
  * Mounts `svgMarkup` into a container and animates its strokes on, then fades
  * the fills and labels in. Rebuilds whenever the markup changes.
  */

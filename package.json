@@ -1,23 +1,35 @@
 {
     "name": "@penwell/draw-on",
-    "version": "0.1.4",
-    "description": "Animate any inline SVGs so its strokes draw themselves, then fade the fills and labels in. Scrubbable, and recordable to WebM in the browser.",
+    "version": "1.0.0",
+    "description": "Make any SVG draw itself. Zero-dependency stroke animation with <use>/<symbol> support, fills and labels that fade in, scrubbing, scroll, a pen nib, hand-drawn mode, CSS-only animated SVG export and WebM recording. React, Web Component and vanilla.",
     "keywords": [
         "svg",
+        "svg-animation",
         "animation",
-        "vivus",
+        "line-drawing",
+        "stroke-animation",
+        "path-animation",
         "draw",
+        "draw-svg",
         "handwriting",
-        "react",
-        "webm",
+        "signature",
         "sketch",
+        "hand-drawn",
         "reveal",
+        "scroll-animation",
+        "react",
+        "web-component",
+        "custom-element",
         "mermaid",
-        "Excalidraw",
+        "excalidraw",
+        "icons",
+        "logo-animation",
+        "animated-svg",
+        "vivus",
+        "vivus-alternative",
         "record",
-        "scrubbable",
-        "recordable",
-        "webm"
+        "webm",
+        "scrubbable"
     ],
     "license": "MIT",
     "type": "module",
@@ -45,11 +57,33 @@
                 "types": "./dist/core.d.cts",
                 "default": "./dist/core.cjs"
             }
-        }
+        },
+        "./react": {
+            "import": {
+                "types": "./dist/react.d.ts",
+                "default": "./dist/react.js"
+            },
+            "require": {
+                "types": "./dist/react.d.cts",
+                "default": "./dist/react.cjs"
+            }
+        },
+        "./element": {
+            "import": {
+                "types": "./dist/element.d.ts",
+                "default": "./dist/element.js"
+            },
+            "require": {
+                "types": "./dist/element.d.cts",
+                "default": "./dist/element.cjs"
+            }
+        },
+        "./package.json": "./package.json"
     },
     "files": [
         "dist",
         "README.md",
+        "CHANGELOG.md",
         "LICENSE",
         "demo-annotate.gif",
         "demo-diagram.gif",
@@ -70,9 +104,6 @@
         "typecheck": "tsc --noEmit",
         "prepare": "tsup"
     },
-    "dependencies": {
-        "vivus": "^0.4.6"
-    },
     "peerDependencies": {
         "react": ">=17"
     },
@@ -83,7 +114,6 @@
     },
     "devDependencies": {
         "@types/react": "^18.3.11",
-        "@types/vivus": "^0.4.7",
         "tsup": "^8.3.0",
         "typescript": "^5.6.2"
     },

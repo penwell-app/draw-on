@@ -1,4 +1,4 @@
-import type { DrawingOptions } from '@penwell/draw-on/core';
+import type { DrawOptions } from '@penwell/draw-on/core';
 
 export type SampleTag =
     | 'strokes'
@@ -17,8 +17,12 @@ export interface SampleDef {
     tags: SampleTag[];
     /** Full serialized `<svg>…</svg>` markup, exactly what the library receives. */
     svg: string;
-    /** Options this sample looks best with — merged over the defaults. */
-    recommended?: DrawingOptions;
+    /**
+     * Options this sample looks best with, merged over the defaults. `revealMs`
+     * is a 0.1.x key kept so the legacy playground still has something to pass;
+     * the 1.0 engine ignores it.
+     */
+    recommended?: DrawOptions & { revealMs?: number };
     /** Where the markup would come from in a real app. */
     source?: string;
 }
@@ -280,6 +284,91 @@ export const SAMPLES: SampleDef[] = [
         fill="#f6f2e8">dark mode</text>
   <text x="96" y="290" font-family="ui-monospace, monospace" font-size="14"
         fill="#8d897d">stroke colours are yours to choose</text>
+</svg>`,
+    },
+    {
+        id: 'sprite-row',
+        title: 'Sprite row',
+        description:
+            'Four icons assembled from <symbol> definitions with <use>. One symbol nests another <use>, and the last icon is skipped with data-draw-skip.',
+        tags: ['strokes', 'fills'],
+        source: 'Icon sprite sheet',
+        recommended: { type: 'oneByOne', duration: 1800, reveal: 'none' },
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300">
+  <defs>
+    <symbol id="sprite-pin" viewBox="0 0 48 48">
+      <path d="M24 44 C24 44 40 27 40 17 A16 16 0 0 0 8 17 C8 27 24 44 24 44 Z"
+            fill="#f4c95d" stroke="#27241a" stroke-width="2.5" stroke-linejoin="round"/>
+      <circle cx="24" cy="17" r="6" fill="#fffdf7" stroke="#27241a" stroke-width="2.5"/>
+    </symbol>
+
+    <symbol id="sprite-tick" viewBox="0 0 24 24">
+      <path d="M4 12.5 L9.5 18 L20 6" fill="none" stroke="#fffdf7" stroke-width="3.4"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+
+    <symbol id="sprite-checked" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="21" fill="#7bc6a4" stroke="#27241a" stroke-width="2.5"/>
+      <use href="#sprite-tick" x="12" y="12" width="24" height="24"/>
+    </symbol>
+
+    <symbol id="sprite-db" viewBox="0 0 48 48">
+      <ellipse cx="24" cy="11" rx="15" ry="5.5" fill="#a8d8ea" stroke="#27241a" stroke-width="2.5"/>
+      <path d="M9 11 V37 C9 40 16 42.5 24 42.5 C32 42.5 39 40 39 37 V11"
+            fill="#a8d8ea" stroke="#27241a" stroke-width="2.5"/>
+      <path d="M9 24 C9 27 16 29.5 24 29.5 C32 29.5 39 27 39 24" fill="none"
+            stroke="#27241a" stroke-width="2"/>
+    </symbol>
+
+    <symbol id="sprite-flag" viewBox="0 0 48 48">
+      <path d="M14 44 V6" fill="none" stroke="#27241a" stroke-width="3" stroke-linecap="round"/>
+      <path d="M14 8 H38 L32 18 L38 28 H14 Z" fill="#e7efe8" stroke="#27241a" stroke-width="2.5"
+            stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+
+  <use href="#sprite-pin" x="34" y="40" width="92" height="92"/>
+  <use href="#sprite-checked" x="176" y="40" width="92" height="92"/>
+  <use href="#sprite-db" x="318" y="40" width="92" height="92"/>
+  <use href="#sprite-flag" x="460" y="40" width="92" height="92"/>
+
+  <use href="#sprite-pin" x="600" y="40" width="92" height="92" data-draw-skip=""/>
+  <text x="646" y="158" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12"
+        fill="#625d50">skipped</text>
+
+  <text x="360" y="216" text-anchor="middle" font-family="system-ui, sans-serif" font-size="19"
+        font-weight="700" fill="#27241a">four drawn, one skipped</text>
+  <text x="360" y="248" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15"
+        fill="#625d50">the checked badge nests a second use inside its own symbol</text>
+</svg>`,
+    },
+    {
+        id: 'signature-line',
+        title: 'Signature flourish',
+        description:
+            'A single continuous handwriting stroke with a baseline sweep, made for the pen nib and hand-drawn mode.',
+        tags: ['handwriting', 'strokes'],
+        source: 'Handwritten SVG',
+        recommended: { type: 'speed', speed: 620, reveal: 'none', pen: true },
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280">
+  <path d="M80 198 H566" stroke="#e8e4db" stroke-width="2" fill="none"/>
+
+  <path d="M96 170 C108 128 136 114 148 138 C158 158 136 172 128 158 C120 144 144 118 168 124
+           C190 130 178 170 164 180 C152 188 148 176 156 166
+           C170 148 200 130 218 140 C232 148 220 174 206 182
+           C196 188 192 178 198 168 C208 152 238 134 256 144
+           C270 152 260 174 246 182 C236 188 232 178 238 168
+           C248 152 278 136 294 144 C306 150 300 172 290 180"
+        fill="none" stroke="#27241a" stroke-width="4.5" stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <path d="M86 212 C212 230 402 222 568 196" fill="none" stroke="#2f6a5c" stroke-width="3"
+        stroke-linecap="round"/>
+
+  <circle cx="556" cy="140" r="17" fill="#f4c95d" stroke="#27241a" stroke-width="2.5"/>
+
+  <text x="320" y="262" text-anchor="middle" font-family="Georgia, serif" font-size="17"
+        font-style="italic" fill="#625d50">signed on the baseline</text>
 </svg>`,
     },
 ];

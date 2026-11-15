@@ -1,0 +1,149 @@
+# Migrating from 0.1.x to 1.0
+
+1.0 replaces the Vivus-based engine with a zero-dependency one and renames almost everything on the public surface. The old names still exist and still work, so nothing breaks the moment you upgrade. What changes is that they are shims over a different engine, with a few behaviours you should know about before you rely on them.
+
+This page is the complete mapping. If you only read one section, read [The three things that will bite you](#the-three-things-that-will-bite-you).
+
+## The three things that will bite you
+
+### `Drawing` still means the old type
+
+The barrel exports two interfaces and the obvious name belongs to the old one:
+
+```ts
+import type { DrawOnDrawing } from '@penwell/draw-on/core'; // the 1.0 handle
+import type { Drawing } from '@penwell/draw-on/core';       // the 0.1.x handle
+```
+
+`Drawing` is the deprecated 0.1.x shape (`hide`, `reveal`, `play(onDone)`). The 1.0 handle is exported as `DrawOnDrawing`. If you typed a variable as `Drawing` and started using `reverse()`, your editor will not find it.
+
+### `duration` changed units
+
+0.1.x counted 60 fps frames, defaulting to 220. 1.0 counts milliseconds, defaulting to 2000.
+
+```ts
+draw(svg, { duration: 220 });  // 1.0: 220ms. Roughly nine frames.
+draw(svg, { duration: 3667 }); // what 220 frames looked like.
+```
+
+The compatibility shim multiplies by `1000 / 60`, so a v0 `duration: 220` still produces 3667ms while you migrate. A v1 `duration: 220` is a quarter of a second.
+
+### `revealMs` is gone
+
+There is no fade-duration option in 1.0. The reveal is a function of progress, not a wall-clock transition. The shim still accepts `revealMs` and emulates it, but what it does now is ease the whole drawing to its end, which is not the same thing. Prefer `revealStart` and `seek`.
+
+## Options
+
+Every 0.1.x option has a 1.0 equivalent except `revealMs`.
+
+| 0.1.x `DrawingOptions` | 1.0 `DrawOptions` | Notes |
+| --- | --- | --- |
+| `duration` (frames, default 220) | `duration` (ms, default 2000) | Multiply by 16.667 to keep the same wall-clock time |
+| `type` | `type` | 1.0 adds `stagger` and `speed` |
+| `stroke` | `stroke` | Unchanged |
+| `strokeWidth` | `strokeWidth` | Unchanged |
+| `revealStart` | `revealStart` | Unchanged, still 0.6 |
+| `revealMs` | *(none)* | No equivalent, see above |
+
+1.0 also fixes three defaults the shim overrides. The shim passes `ease: 'easeOutCubic'`, `autoplay: false` and `reducedMotion: 'ignore'` explicitly, because 0.1.x had no way to set them. Migrating means you get the real defaults, which include honouring `prefers-reduced-motion`.
+
+## Methods on the handle
+
+| 0.1.x | 1.0 | Faithful? |
+| --- | --- | --- |
+| `el` | `el` | Yes |
+| `hide()` | `reset()`, or `seek(0)` | Approximate. 1.0 has no `hide` |
+| `reveal()` | `seek(1)` | **Lossy.** 1.0 jumps; there is no timed fade to the end |
+| `setProgress(f)` | `seek(f)` | Yes, and `setProgress` still exists as an alias |
+| `play(onDone?)` | `play(): Promise<boolean>` | **Signature change.** The callback is gone |
+| `stop()` | `pause()` | Behaviourally the same, renamed |
+| `reset()` | `reset()` | Yes |
+| `destroy()` | `destroy()` | Yes, with an improvement (see below) |
+| *(none)* | `reverse()`, `restart()`, `resume()`, `seekTime(ms)`, `on()` | New |
+| *(none)* | `duration`, `progress`, `playing`, `playbackRate`, `stats` | New |
+
+`play()` resolving a promise replaces the callback:
+
+```ts
+// 0.1.x
+drawing.play(() => setDone(true));
+
+// 1.0
+drawing.play().then((finished) => setDone(finished));
+```
+
+`finished` is `false` when something interrupted the run, which is the part worth noticing: calling `play()` again while a run is in flight resolves the first promise with `false` rather than leaving it pending forever.
+
+## What `destroy()` does differently
+
+In 0.1.x, `destroy()` left the SVG rewritten: Vivus had converted every shape into a `<path>` and the original markup was gone. In 1.0 the engine journals every mutation and restores the SVG exactly as it was. That means `destroy()` is genuinely reversible now, and you can call `draw()` again on the same element.
+
+## React
+
+`useSketchDraw` and `SketchDraw` are not thin wrappers over `useDrawOn` and `<DrawOn>`. They are the original 0.1.x implementations still sitting on `createDrawing`, so migrating changes behaviour rather than just names.
+
+| 0.1.x | 1.0 |
+| --- | --- |
+| `useSketchDraw({ svgMarkup })` | `useDrawOn({ svg })` |
+| `autoPlay` | `trigger: 'auto'` or `trigger: 'manual'` |
+| `onDone` | `onComplete` |
+| `maxWidth` | *(none)*, it only fed `exportWebM` sizing |
+| `status: 'idle' \| 'drawing' \| 'done' \| 'error'` | `status` with seven values, including `loading`, `ready` and `paused` |
+| `error: string` | `error: Error \| null` |
+| `exportWebM()` | `recordDrawToWebM(drawing.el, drawing.setProgress, ...)` |
+| `canRecord` | `canRecordVideo()` |
+| `dimensions` | `computeDims(drawing.el)` |
+| `containerRef` | `ref` |
+| `setProgress` | `seek` |
+| `play()` | `play()`, `restart()`, `reverse()`, `resume()` |
+
+`SketchDraw` took a **function** as children; `<DrawOn>` takes **nodes**. That is the one change that will not type-check loudly enough to notice, because both are valid ReactNode positions.
+
+```tsx
+// 0.1.x: children is a render prop
+<SketchDraw svgMarkup={markup}>{(api) => <button onClick={api.play}>Draw</button>}</SketchDraw>
+
+// 1.0: children is the SVG itself
+<DrawOn svg={markup} />
+<DrawOn ref={handle}>{/* <svg>...</svg> */}</DrawOn>
+```
+
+## What did not change
+
+- `parseSvg`, `computeDims`, `loadSvg`, `sanitizeSvg`, `InvalidSvgError`
+- `canRecordVideo`, `recordDrawToWebM`, `downloadBlob`
+- `SHAPE_SELECTOR`, `TEXT_SELECTOR`, `DEFAULT_STROKE`, `DEFAULT_STROKE_WIDTH`, `isPaint`
+- The default ink colours and outline behaviour for fill-only shapes
+- Scrubbing. `setProgress` is still there, and `seek` is the same operation
+
+`parseSvg` did get stricter: it now sanitises the markup it parses, stripping scripts, event handlers and `javascript:` links. If you were passing user-supplied SVG, that is a fix rather than a break.
+
+## What 1.0 adds
+
+Everything below is new. None of it has a 0.1.x equivalent.
+
+- A real timeline handle: `pause`, `resume`, `reverse`, `restart`, `seekTime`, `playbackRate`, `loop`, `yoyo`, `on()`, and `stats`
+- `type: 'stagger'` and `type: 'speed'` for constant pen speed
+- `ease` and `strokeEase`, with eight named curves or any function
+- `reveal: 'stroke'` so each fill lands behind its own stroke
+- `text: 'type'` to type labels out
+- The `pen` nib and `sketchy` hand-drawn mode
+- `presets` for the common cases
+- `toAnimatedSVG()` for a CSS-only export that works in a README
+- `mount`, `scrollScrub` and `inView`
+- `recordFrames()` for PNG output
+- `<draw-on>`, a Web Component
+- `useDrawOn` and `<DrawOn>` with triggers and controlled progress
+
+Each has its own page. [Start here (1.0)](/docs/v1/start-here) maps them; the [draw() reference](/docs/api-v1/draw) is the one most readers need next.
+
+## A checklist
+
+1. Replace `Drawing` with `DrawOnDrawing` in your own type annotations.
+2. Multiply every hand-written `duration` by 16.667, or delete it and accept the 2000ms default.
+3. Replace `revealMs` with `revealStart`, or drop it.
+4. Swap callback `play` for the promise.
+5. Move `useSketchDraw` to `useDrawOn` and `SketchDraw` to `<DrawOn>`, checking the children shape.
+6. Replace `hide()` with `reset()` and `reveal()` with `seek(1)`.
+7. Call `destroy()` on unmount as before. It now really does restore the element.
+8. Re-read anything that depended on shapes becoming `<path>` elements.
